@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+//////////////////////
+// ENUMS
+//////////////////////
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+//////////////////////
+// USERS (GLOBAL IDENTITY)
+//////////////////////
+
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+
+  emailVerified Boolean @default(false)
+  isActive      Boolean @default(true)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  ownedTenants   Tenant[]        @relation("TenantOwner")
+  tenantUsers    TenantUser[]
+  projectMembers ProjectMember[] // ✅ ADD THIS
+  projects       Project[]       @relation("ProjectCreator")
+  tasksCreated   Task[]          @relation("TaskCreator")
+  taskAssignees  TaskAssignee[]
+  comments       TaskComment[]
+  auditLogs      AuditLog[]
+}
+
+//////////////////////
+// TENANTS (ORGANIZATION)
+//////////////////////
+
+model Tenant {
+  id   String @id @default(uuid())
+  name String
+
+  ownerUserId String
+  owner       User   @relation("TenantOwner", fields: [ownerUserId], references: [id])
+
+  plan     String  @default("FREE")
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenantUsers TenantUser[]
+  projects    Project[]
+  tasks       Task[]
+  auditLogs   AuditLog[]
+}
+
+//////////////////////
+// TENANT USERS (RBAC CORE)
+//////////////////////
+
+model TenantUser {
+  tenantId String
+  userId   String
+  role     Role
+  isActive Boolean @default(true)
+
+  joinedAt  DateTime  @default(now())
+  removedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@id([tenantId, userId])
+}
+
+//////////////////////
+// PROJECTS
+//////////////////////
+
+model Project {
+  id       String @id @default(uuid())
+  tenantId String
+
+  name        String
+  description String?
+
+  createdById String?
+  createdBy   User?   @relation("ProjectCreator", fields: [createdById], references: [id])
+
+  isArchived Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  members ProjectMember[]
+  tasks   Task[]
+}
+
+//////////////////////
+// PROJECT MEMBERS
+//////////////////////
+
+model ProjectMember {
+  projectId String
+  userId    String
+
+  addedAt   DateTime  @default(now())
+  removedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@id([projectId, userId])
+}
+
+//////////////////////
+// TASKS
+//////////////////////
+
+model Task {
+  id        String @id @default(uuid())
+  tenantId  String
+  projectId String
+
+  title       String
+  description String?
+
+  status   TaskStatus   @default(TODO)
+  priority TaskPriority @default(MEDIUM)
+
+  createdById String?
+  createdBy   User?   @relation("TaskCreator", fields: [createdById], references: [id])
+
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id])
+  project   Project        @relation(fields: [projectId], references: [id])
+  assignees TaskAssignee[]
+  comments  TaskComment[]
+}
+
+//////////////////////
+// TASK ASSIGNEES
+//////////////////////
+
+model TaskAssignee {
+  taskId String
+  userId String
+
+  assignedAt DateTime  @default(now())
+  removedAt  DateTime?
+
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([taskId, userId])
+}
+
+//////////////////////
+// TASK COMMENTS
+//////////////////////
+
+model TaskComment {
+  id     String @id @default(uuid())
+  taskId String
+  userId String
+
+  comment String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+//////////////////////
+// EMAIL OTPs (OTP-FIRST SIGNUP)
+//////////////////////
+
+model EmailOtp {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+//////////////////////
+// AUDIT LOGS
+//////////////////////
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  tenantId String?
+  userId   String?
+
+  action     String
+  entityType String
+  entityId   String?
+
+  oldValue Json?
+  newValue Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entityType, entityId])
+}
