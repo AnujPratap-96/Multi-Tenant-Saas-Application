@@ -26,7 +26,7 @@ This project follows **real SaaS architecture principles**, not tutorial shortcu
 
 ## 📁 Project Structure Overview
 
----
+```
 task-manager-saas/
 │
 ├─ prisma/
@@ -77,7 +77,7 @@ task-manager-saas/
 ├─ package.json
 └─ README.md
 
----
+```
 
 
 ---
@@ -160,5 +160,6 @@ npm run dev
 
 This backend architecture is **stable and extensible**.
 New features can be added without redesigning core systems.
+
 
 
