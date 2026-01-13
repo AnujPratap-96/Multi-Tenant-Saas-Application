@@ -1,5 +1,5 @@
 import logger from "../lib/logger.js";
-import { ApiError } from "../utils/ApiError.js";
+import { ApiError } from "../utils/api-error.js";
 import { errorResponse } from "../utils/response.js";
 import { ZodError } from "zod";
 
@@ -25,12 +25,12 @@ export default function errorMiddleware(err, req, res, next) {
     message: error.message,
     stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
     userId: req.user?.id,
-    tenantId: req.tenant?.id
+    tenantId: req.tenant?.id,
   });
 
   return errorResponse(res, {
     statusCode: error.statusCode,
     message: error.message,
-    error: error.details || null
+    error: error.details || null,
   });
 }

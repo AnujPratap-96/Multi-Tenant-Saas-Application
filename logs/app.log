@@ -1,0 +1,4 @@
+{"level":30,"time":1768338454656,"pid":9004,"hostname":"ANUJTHAKUR","msg":"Connecting to database..."}
+{"level":30,"time":1768338455123,"pid":9004,"hostname":"ANUJTHAKUR","msg":"Database connection successful"}
+{"level":30,"time":1768338455133,"pid":9004,"hostname":"ANUJTHAKUR","msg":"🚀 Server running on port 3000"}
+{"level":30,"time":1768338509526,"pid":9004,"hostname":"ANUJTHAKUR","msg":"SIGINT received. Shutting down..."}

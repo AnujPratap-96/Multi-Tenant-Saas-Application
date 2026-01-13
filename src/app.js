@@ -3,13 +3,11 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { v4 as uuid } from "uuid";
-
-import logger from "./lib/logger.js";
-import { env } from "./config/env.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
-import routes from "./routes.js";
+import cookieParser from "cookie-parser";
 import requestLogger from "./middlewares/requestLogger.middleware.js";
-
+import { API_PREFIX } from "./config/version.js";
+import authRoutes from "./routes/auth.route.js";
 const app = express();
 
 /* ------------------ Request ID ------------------ */
@@ -41,11 +39,12 @@ app.use(
     legacyHeaders: false,
   })
 );
+app.use(cookieParser());
 
 /* ------------------ Request Logging ------------------ */
 app.use(requestLogger);
 /* ------------------ Routes ------------------ */
-app.use("/api", routes);
+app.use(`${API_PREFIX}/auth`, authRoutes);
 
 /* ------------------ Error Handler (LAST) ------------------ */
 app.use(errorMiddleware);
