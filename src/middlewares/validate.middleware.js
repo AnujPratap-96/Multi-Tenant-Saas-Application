@@ -6,14 +6,10 @@ export const validate = (schema) => (req, res, next) => {
   });
 
   if (!result.success) {
-    return next(result.error);
+    console.log(result)
+   
   }
 
-  const { body, params, query } = result.data;
-
-  if (body) req.body = body;
-  if (params) Object.assign(req.params, params);
-  if (query) req.query = query;
-
+  req.validated = result.data; // safe
   next();
 };

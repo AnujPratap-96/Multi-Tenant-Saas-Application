@@ -7,7 +7,7 @@ import errorMiddleware from "./middlewares/error.middleware.js";
 import cookieParser from "cookie-parser";
 import requestLogger from "./middlewares/requestLogger.middleware.js";
 import { API_PREFIX } from "./config/version.js";
-import authRoutes from "./routes/auth.route.js";
+import authRoutes from "./modules/auth/auth.routes.js";
 const app = express();
 
 /* ------------------ Request ID ------------------ */
@@ -27,7 +27,7 @@ app.use(
 );
 
 /* ------------------ Body Parsing ------------------ */
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ------------------ Rate Limiting ------------------ */
@@ -44,6 +44,7 @@ app.use(cookieParser());
 /* ------------------ Request Logging ------------------ */
 app.use(requestLogger);
 /* ------------------ Routes ------------------ */
+console.log(`Mounting auth routes at ${API_PREFIX}/auth`);
 app.use(`${API_PREFIX}/auth`, authRoutes);
 
 /* ------------------ Error Handler (LAST) ------------------ */

@@ -1,6 +1,6 @@
 // validators/auth.schema.js
 import { z } from "zod";
-import { requestSchema } from "./request.schema.js";
+import { requestSchema } from "../../schemas/request.schema.js";
 
 export const signUpSchema = requestSchema({
   body: z.object({
