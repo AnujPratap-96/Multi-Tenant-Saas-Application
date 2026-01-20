@@ -1,29 +1,31 @@
-import pkg from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import logger from "./logger.js";
-import {env} from "../config/env.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-// 🔌 PostgreSQL adapter (REQUIRED in Prisma 7)
-const adapter = new PrismaPg({
-  connectionString: env.DATABASE_URL,
-});
-
-const { PrismaClient } = pkg;
 
 const prisma = new PrismaClient({
-  adapter,
   log: [
     { emit: "event", level: "error" },
     { emit: "event", level: "warn" },
   ],
 });
 
+// Prisma logs → your logger
 prisma.$on("error", (e) => {
   logger.error(e, "Prisma error");
 });
 
 prisma.$on("warn", (e) => {
   logger.warn(e, "Prisma warning");
+});
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  await prisma.$disconnect();
+  process.exit(0);
 });
 
 export default prisma;

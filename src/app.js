@@ -46,6 +46,7 @@ app.use(cookieParser());
 app.use(requestLogger);
 /* ------------------ Routes ------------------ */
 
+
 app.use(`${API_PREFIX}/auth`, authRoutes);
 
 /* ------------------ Error Handler (LAST) ------------------ */

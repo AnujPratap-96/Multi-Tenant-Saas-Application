@@ -22,9 +22,12 @@ const envSchema = z
     // JWT
     JWT_ACCESS_SECRET: z.string().min(32),
     JWT_REFRESH_SECRET: z.string().min(32),
-    // JWT_ACCESS_EXPIRES_IN: z.string(),   // e.g. 15m
-    // JWT_REFRESH_EXPIRES_IN: z.string(),  // e.g. 7d
-
+    JWT_SIGNUP_SECRET: z.string().min(32),
+    JWT_ACCESS_EXPIRES_IN: z.string(),   // e.g. 15m
+    JWT_REFRESH_EXPIRES_IN: z.string(),  // e.g. 7d
+    JWT_SIGNUP_EXPIRES_IN: z.string(),   // e.g. 10m
+    SIGNUP_TOKEN_COOKIE_MAX_AGE: z.string().regex(/^\d+$/).transform(Number),
+    
     // OTP
     OTP_LENGTH: z.string().regex(/^\d+$/).transform(Number),
     OTP_EXPIRES_IN: z.string().regex(/^\d+$/).transform(Number), // seconds
@@ -37,12 +40,9 @@ const envSchema = z
     // Security
     BCRYPT_SALT_ROUNDS: z.string().regex(/^\d+$/).transform(Number),
 
-    // Email
-    // EMAIL_FROM: z.string().email(),
-    // SMTP_HOST: z.string().min(1),
-    // SMTP_PORT: z.string().regex(/^\d+$/).transform(Number),
-    // SMTP_USER: z.string().min(1),
-    // SMTP_PASS: z.string().min(1),
+    // Third-party services
+    BREVO_API_KEY: z.string().min(1),
+
 
     // Logging
     // LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]),

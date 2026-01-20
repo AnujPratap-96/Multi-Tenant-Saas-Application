@@ -1,65 +1,44 @@
 // auth.repository.js
-import { prisma } from "../../lib/prisma.js";
+import prisma from '../../lib/prisma.js';
 
-export const upsertOtp = ({ email, otp, expiresAt }) => {
-  return prisma.emailOtp.upsert({
-    where: { email },
-    update: {
-      otp,
-      expiresAt,
-      attempts: 0,
-      verified: false,
-    },
-    create: {
+export const findActiveOtp = async ({ email, purpose }) => {
+  return prisma.emailOtp.findFirst({
+    where: {
       email,
-      otp,
-      expiresAt,
+      purpose,
+      expiresAt: { gt: new Date() },
+      usedAt: null,
     },
   });
 };
 
-export const findByEmail = (email) => {
-  return prisma.emailOtp.findUnique({
-    where: { email },
-  });
+export const createOtp = async (data) => {
+  return prisma.emailOtp.create({ data });
 };
 
-export const incrementAttempts = (email) => {
+export const incrementAttempts = async (id) => {
   return prisma.emailOtp.update({
-    where: { email },
+    where: { id },
     data: {
       attempts: { increment: 1 },
     },
   });
 };
 
-export const markVerifiedAndDelete = (email) => {
-  return prisma.emailOtp.delete({
-    where: { email },
-  });
-};
-
-export const createOtp = (data) => {
-  return prisma.emailOtp.create({ data });
-};
-
-export const findLatestValidOtp = ({ email, purpose, deviceId }) => {
-  return prisma.emailOtp.findFirst({
-    where: {
-      email,
-      purpose,
-      deviceId,
-      expiresAt: { gt: new Date() },
-      usedAt: null,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-};
-
-
-export const markUsed = (id) => {
+export const markUsed = async (id) => {
   return prisma.emailOtp.update({
     where: { id },
     data: { usedAt: new Date() },
+  });
+};
+
+export const deleteOtpByEmailPurpose = async ({ email, purpose }) => {
+  return prisma.emailOtp.deleteMany({
+    where: { email, purpose },
+  });
+};
+export const findByEmail = async (email) => {
+  return prisma.user.findUnique({
+    where: { email },
   });
 };

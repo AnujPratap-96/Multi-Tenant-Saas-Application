@@ -4,8 +4,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  
+  url      = env("DATABASE_URL")
 }
+
 
 //////////////////////
 // ENUMS
@@ -213,23 +214,24 @@ model TaskComment {
 //////////////////////
 
 model EmailOtp {
-  id         String   @id @default(uuid())
+  id          String   @id @default(uuid())
 
-  email      String
-  purpose    OtpPurpose
+  email       String
+  purpose     OtpPurpose
 
-  codeHash   String
-  expiresAt  DateTime
+  codeHash    String
+  expiresAt   DateTime
 
-  attempts   Int      @default(0)
-  maxAttempts Int     @default(5)
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
 
-  createdAt  DateTime @default(now())
-  usedAt     DateTime?
+  createdAt   DateTime @default(now())
+  usedAt      DateTime?
 
-  @@index([email, purpose])
+  @@unique([email, purpose])
   @@index([expiresAt])
 }
+
 
 enum OtpPurpose {
   SIGNUP
