@@ -4,7 +4,6 @@ import { requestSchema } from "../../schemas/request.schema.js";
 
 export const signUpSchema = requestSchema({
   body: z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
+     email: z.string().trim().toLowerCase().email(),
   }),
 });

@@ -213,15 +213,28 @@ model TaskComment {
 //////////////////////
 
 model EmailOtp {
-  id        String   @id @default(uuid())
-  email     String
-  otp       String
-  expiresAt DateTime
-  verified  Boolean  @default(false)
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
 
-  @@index([email])
+  email      String
+  purpose    OtpPurpose
+
+  codeHash   String
+  expiresAt  DateTime
+
+  attempts   Int      @default(0)
+  maxAttempts Int     @default(5)
+
+  createdAt  DateTime @default(now())
+  usedAt     DateTime?
+
+  @@index([email, purpose])
+  @@index([expiresAt])
+}
+
+enum OtpPurpose {
+  SIGNUP
+  LOGIN
+  PASSWORD_RESET
 }
 
 //////////////////////

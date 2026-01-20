@@ -7,6 +7,7 @@ import errorMiddleware from "./middlewares/error.middleware.js";
 import cookieParser from "cookie-parser";
 import requestLogger from "./middlewares/requestLogger.middleware.js";
 import { API_PREFIX } from "./config/version.js";
+import { env } from "./config/env.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 const app = express();
 
@@ -33,8 +34,8 @@ app.use(express.urlencoded({ extended: true }));
 /* ------------------ Rate Limiting ------------------ */
 app.use(
   rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 300,
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    max: env.RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
   })
@@ -44,7 +45,7 @@ app.use(cookieParser());
 /* ------------------ Request Logging ------------------ */
 app.use(requestLogger);
 /* ------------------ Routes ------------------ */
-console.log(`Mounting auth routes at ${API_PREFIX}/auth`);
+
 app.use(`${API_PREFIX}/auth`, authRoutes);
 
 /* ------------------ Error Handler (LAST) ------------------ */
