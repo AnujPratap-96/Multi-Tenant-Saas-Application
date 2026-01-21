@@ -32,6 +32,8 @@ const envSchema = z
     OTP_LENGTH: z.string().regex(/^\d+$/).transform(Number),
     OTP_EXPIRES_IN: z.string().regex(/^\d+$/).transform(Number), // seconds
     OTP_MAX_ATTEMPTS: z.string().regex(/^\d+$/).transform(Number),
+    MAX_RESEND: z.string().regex(/^\d+$/).transform(Number),
+    RESEND_COOLDOWN: z.string().regex(/^\d+$/).transform(Number), // seconds
 
     // Rate limiting
     RATE_LIMIT_WINDOW_MS: z.string().regex(/^\d+$/).transform(Number),

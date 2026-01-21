@@ -7,3 +7,10 @@ export const signUpSchema = requestSchema({
      email: z.string().trim().toLowerCase().email(),
   }),
 });
+
+
+export const verifyEmailSchema = requestSchema({
+  body: z.object({
+    otp: z.string().length(6),
+  }),
+});

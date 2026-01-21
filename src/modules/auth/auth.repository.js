@@ -6,11 +6,23 @@ export const findActiveOtp = async ({ email, purpose }) => {
     where: {
       email,
       purpose,
+      isActive: true,
       expiresAt: { gt: new Date() },
       usedAt: null,
     },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
 };
+
+export const deactivateOtp = async (id) => {
+  return prisma.emailOtp.update({
+    where: { id },
+    data: { isActive: false },
+  });
+};
+
 
 export const createOtp = async (data) => {
   return prisma.emailOtp.create({ data });
@@ -25,12 +37,16 @@ export const incrementAttempts = async (id) => {
   });
 };
 
-export const markUsed = async (id) => {
+export const markOtpAsUsed = async (id) => {
   return prisma.emailOtp.update({
     where: { id },
-    data: { usedAt: new Date() },
+    data: {
+      usedAt: new Date(),
+      isActive: false,
+    },
   });
 };
+
 
 export const deleteOtpByEmailPurpose = async ({ email, purpose }) => {
   return prisma.emailOtp.deleteMany({

@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 //////////////////////
 // ENUMS
 //////////////////////
@@ -214,24 +213,28 @@ model TaskComment {
 //////////////////////
 
 model EmailOtp {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  email       String
-  purpose     OtpPurpose
+  email   String
+  purpose OtpPurpose
 
-  codeHash    String
-  expiresAt   DateTime
+  codeHash  String
+  expiresAt DateTime
 
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(5)
+  attempts    Int @default(0)
+  maxAttempts Int @default(5)
 
-  createdAt   DateTime @default(now())
-  usedAt      DateTime?
+  resendCount Int      @default(0)
+  lastSentAt  DateTime
 
-  @@unique([email, purpose])
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  @@index([email, purpose])
   @@index([expiresAt])
 }
-
 
 enum OtpPurpose {
   SIGNUP

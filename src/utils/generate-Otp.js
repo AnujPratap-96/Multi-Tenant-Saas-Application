@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
- const generateOtp = (length = 6) => {
+ export const generateOtp = (length = 6) => {
   const otp = crypto.randomInt(
     10 ** (length - 1),
     10 ** length
@@ -13,4 +13,12 @@ import crypto from 'crypto';
 
   return { otp, hash };
 };
-export default generateOtp;
+
+export const verifyOtpCode = async (plainOtp, storedHash) => {
+  const hash = crypto
+    .createHash("sha256")
+    .update(plainOtp)
+    .digest("hex");
+
+  return hash === storedHash;
+};
