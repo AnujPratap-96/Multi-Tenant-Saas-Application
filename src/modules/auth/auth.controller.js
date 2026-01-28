@@ -34,3 +34,10 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     return successResponse(res, { message: "Email verified successfully" });
 
 });
+
+export const setPassword = asyncHandler(async (req, res) => {
+ const email = req.passwordEmail;
+    const { password } = req.body;
+    await setPasswordService(email, password);
+
+});

@@ -14,3 +14,10 @@ export const verifyEmailSchema = requestSchema({
     otp: z.string().length(6),
   }),
 });
+
+
+export const setPasswordSchema = requestSchema({
+  body: z.object({
+   password : z.string().min(8).max(128),
+  }),
+});

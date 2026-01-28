@@ -10,3 +10,8 @@ export const generateSignupToken = async({ email, purpose , verified = false }) 
   );
 };
 
+
+
+export const generateAuthToken = async({ userId , email }) => {
+  
+}

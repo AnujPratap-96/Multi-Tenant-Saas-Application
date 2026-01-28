@@ -1,10 +1,12 @@
 import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
-import sendOtpEmail from "../../lib/sendOtpEmail.js";
+import {sendOtpEmail , sendWelcomeEmail} from "../../lib/sendEmail.js";
 import { generateOtp, verifyOtpCode } from "../../utils/generate-Otp.js";
 import { findActiveOtp, createOtp , markOtpAsUsed } from "./auth.repository.js";
-import { findUserByEmail } from "../users/user.repository.js";
+import { findUserByEmail, updateLastLogin } from "../users/user.repository.js";
 import { generateSignupToken } from "../../lib/jwt.js";
+import bcrypt from "bcryptjs";
+
 
 export const generateOtpService = async (email) => {
 
@@ -106,3 +108,24 @@ console.log("Active OTP:", activeOtp);
   });
   return { token };
 };
+
+
+export const setPasswordService = async (email, password) => {
+
+  const user = await findUserByEmail(email);
+  if (user) {
+    throw new ApiError(400, "User with this email already exists");
+  }
+ 
+  const salt = await bcrypt.genSalt(env.BCRYPT_SALT_ROUNDS);
+  const hashedPassword = await bcrypt.hash(password, salt);
+  
+
+  const newUser = await createUser({
+    email,
+    password: hashedPassword,
+    
+  });
+ await updateLastLogin(newUser.id);
+  await sendWelcomeEmail(email, newUser.name);
+}

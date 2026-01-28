@@ -38,6 +38,11 @@ model User {
   email    String @unique
   password String
 
+  // 👤 Identity
+  firstName String?
+  lastName  String?
+  avatarUrl String?
+
   emailVerified Boolean @default(false)
   isActive      Boolean @default(true)
 
@@ -46,14 +51,20 @@ model User {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  ownedTenants   Tenant[]        @relation("TenantOwner")
-  tenantUsers    TenantUser[]
-  projectMembers ProjectMember[] // ✅ ADD THIS
-  projects       Project[]       @relation("ProjectCreator")
-  tasksCreated   Task[]          @relation("TaskCreator")
-  taskAssignees  TaskAssignee[]
-  comments       TaskComment[]
-  auditLogs      AuditLog[]
+  ownedTenants     Tenant[]          @relation("TenantOwner")
+  tenantUsers      TenantUser[]
+  projectMembers   ProjectMember[]
+  projects         Project[]         @relation("ProjectCreator")
+  tasksCreated     Task[]            @relation("TaskCreator")
+  taskAssignees    TaskAssignee[]
+  comments         TaskComment[]
+auditLogsAsActor   AuditLog[] @relation("AuditActor")
+auditLogsAsSubject AuditLog[] @relation("AuditSubject")
+tasksUpdated Task[] @relation("TaskUpdater")
+tenantInvitations TenantUser[] @relation("TenantUserInviter")
+
+  tenantOwnerships TenantOwnership[]
+  sessions AuthSession[] 
 }
 
 //////////////////////
@@ -74,21 +85,37 @@ model Tenant {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  tenantUsers TenantUser[]
-  projects    Project[]
-  tasks       Task[]
-  auditLogs   AuditLog[]
+  tenantUsers      TenantUser[]
+  projects         Project[]
+  tasks            Task[]
+  auditLogs        AuditLog[]
+  tenantOwnerships TenantOwnership[]
+}
+
+model TenantOwnership {
+  tenantId   String
+  userId     String
+  assignedAt DateTime  @default(now())
+  removedAt  DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@id([tenantId, userId])
 }
 
 //////////////////////
 // TENANT USERS (RBAC CORE)
 //////////////////////
-
 model TenantUser {
   tenantId String
   userId   String
-  role     Role
-  isActive Boolean @default(true)
+
+  role   Role
+  status TenantUserStatus @default(ACTIVE)
+
+  invitedById String?
+  invitedBy   User?   @relation("TenantUserInviter", fields: [invitedById], references: [id])
 
   joinedAt  DateTime  @default(now())
   removedAt DateTime?
@@ -97,6 +124,13 @@ model TenantUser {
   user   User   @relation(fields: [userId], references: [id])
 
   @@id([tenantId, userId])
+}
+
+enum TenantUserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REMOVED
 }
 
 //////////////////////
@@ -127,10 +161,11 @@ model Project {
 //////////////////////
 // PROJECT MEMBERS
 //////////////////////
-
 model ProjectMember {
   projectId String
   userId    String
+
+  role ProjectRole @default(MEMBER)
 
   addedAt   DateTime  @default(now())
   removedAt DateTime?
@@ -139,6 +174,12 @@ model ProjectMember {
   user    User    @relation(fields: [userId], references: [id])
 
   @@id([projectId, userId])
+}
+
+enum ProjectRole {
+  OWNER
+  MAINTAINER
+  MEMBER
 }
 
 //////////////////////
@@ -162,9 +203,11 @@ model Task {
   dueDate     DateTime?
   completedAt DateTime?
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  updatedById String?
+  updatedBy   User?     @relation("TaskUpdater", fields: [updatedById], references: [id])
 
   tenant    Tenant         @relation(fields: [tenantId], references: [id])
   project   Project        @relation(fields: [projectId], references: [id])
@@ -250,10 +293,12 @@ model AuditLog {
   id String @id @default(uuid())
 
   tenantId String?
-  userId   String?
 
-  action     String
-  entityType String
+  actorUserId   String?
+  subjectUserId String?
+
+  action     AuditAction
+  entityType AuditEntity
   entityId   String?
 
   oldValue Json?
@@ -265,9 +310,61 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   tenant Tenant? @relation(fields: [tenantId], references: [id])
-  user   User?   @relation(fields: [userId], references: [id])
+  actor  User?   @relation("AuditActor", fields: [actorUserId], references: [id])
+  subject User?  @relation("AuditSubject", fields: [subjectUserId], references: [id])
 
   @@index([tenantId])
-  @@index([userId])
+  @@index([actorUserId])
+  @@index([subjectUserId])
   @@index([entityType, entityId])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  INVITE
+  REMOVE
+  LOGIN
+  LOGOUT
+  PASSWORD_RESET
+  ROLE_CHANGE
+}
+
+enum AuditEntity {
+  USER
+  TENANT
+  PROJECT
+  TASK
+  COMMENT
+  SESSION
+}
+
+//////////////////////
+// AUTH SESSIONS
+//////////////////////
+
+model AuthSession {
+  id String @id @default(uuid())
+
+  userId String
+
+
+  refreshTokenHash String
+
+  ipAddress String?
+  userAgent String?
+
+  isRevoked Boolean @default(false)
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user   User    @relation(fields: [userId], references: [id])
+
+
+  @@index([userId])
+
+  @@index([isRevoked])
 }
