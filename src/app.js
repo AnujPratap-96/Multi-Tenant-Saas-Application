@@ -11,14 +11,14 @@ import { env } from "./config/env.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 const app = express();
 
-/* ------------------ Request ID ------------------ */
+
 app.use((req, res, next) => {
   req.id = uuid();
   res.setHeader("X-Request-Id", req.id);
   next();
 });
 
-/* ------------------ Security ------------------ */
+
 app.use(helmet());
 app.use(
   cors({
@@ -27,11 +27,11 @@ app.use(
   })
 );
 
-/* ------------------ Body Parsing ------------------ */
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* ------------------ Rate Limiting ------------------ */
+
 app.use(
   rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -42,14 +42,14 @@ app.use(
 );
 app.use(cookieParser());
 
-/* ------------------ Request Logging ------------------ */
+
 app.use(requestLogger);
-/* ------------------ Routes ------------------ */
+
 
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
 
-/* ------------------ Error Handler (LAST) ------------------ */
+
 app.use(errorMiddleware);
 
 export default app;

@@ -1,8 +1,6 @@
 import logger from "../lib/logger.js";
-
 export default function requestLogger(req, res, next) {
   const start = Date.now();
-
   res.on("finish", () => {
     logger.info({
       reqId: req.id,
@@ -15,6 +13,5 @@ export default function requestLogger(req, res, next) {
       tenantId: req.tenant?.id
     }, "Request completed");
   });
-
   next();
 }

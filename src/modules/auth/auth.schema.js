@@ -21,3 +21,10 @@ export const setPasswordSchema = requestSchema({
    password : z.string().min(8).max(128),
   }),
 });
+
+export const loginSchema = requestSchema({
+  body: z.object({
+    email: z.string().trim().toLowerCase().email(),
+    password: z.string().min(8).max(128),
+  }),
+});

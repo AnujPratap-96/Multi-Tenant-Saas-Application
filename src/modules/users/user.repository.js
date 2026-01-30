@@ -9,13 +9,13 @@ export const findUserByEmail = async (email) => {
 
 export const createUser = async ({
   email,
-  passwordHash,
+  password,
 }) => {
   return prisma.user.create({
     data: {
       email,
-      password: passwordHash,
-      emailVerified: true,   // because OTP already verified
+      password,
+      emailVerified: true,   
       isActive: true,
     },
   });

@@ -1,11 +1,9 @@
 export class ApiError extends Error {
   constructor(statusCode, message, details = null) {
     super(message);
-
     this.statusCode = statusCode;
     this.details = details;
     this.isOperational = true;
-
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -27,14 +25,11 @@ export const validationMessages = {
 
 export function mapZodErrors(err) {
   const errors = {};
-
   // err.errors is already a flat array
   err.issues.forEach((e) => {
     // Get last path segment as field name
     const field = e.path[e.path.length - 1];
-
     let msg;
-
     // Handle missing field
     if (e.code === "invalid_type" && e.received === "undefined") {
       msg = validationMessages[field]?.required || "This field is required";
@@ -51,10 +46,8 @@ export function mapZodErrors(err) {
     else {
       msg = validationMessages[field]?.invalid || e.message;
     }
-
     // Assign to errors object
     errors[field] = msg;
   });
-
   return errors;
 }

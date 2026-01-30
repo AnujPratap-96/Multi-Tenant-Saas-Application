@@ -2,18 +2,14 @@ import pino from "pino";
 import fs from "fs";
 import path from "path";
 import { env } from "../config/env.js";
-
 const isProd = env.NODE_ENV === "production";
-
 // Ensure logs directory exists (early-stage OK)
 const logsDir = path.join(process.cwd(), "logs");
 if (isProd && !fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
-
 const logger = pino({
   level: isProd ? "info" : "debug",
-
   redact: {
     paths: [
       "req.headers.authorization",
@@ -23,7 +19,6 @@ const logger = pino({
     ],
     censor: "[REDACTED]"
   },
-
   transport: !isProd
     ? {
         target: "pino-pretty",
@@ -42,5 +37,4 @@ isProd
     })
   : undefined
 );
-
 export default logger;

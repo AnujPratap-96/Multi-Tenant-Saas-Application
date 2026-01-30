@@ -22,7 +22,7 @@ export const verifyPasswordToken = asyncHandler(async (req, res, next) => {
         throw new ApiError(401, "Password reset token missing");
     }
     const payload = jwt.verify(token, env.JWT_SIGNUP_SECRET);
-    if (payload.purpose !== "PASSWORD_RESET") {
+    if ( payload.purpose !== "COMPLETE_SIGNUP") {
         throw new ApiError(401, "Invalid password reset token");
     }
     req.passwordEmail = payload.email;

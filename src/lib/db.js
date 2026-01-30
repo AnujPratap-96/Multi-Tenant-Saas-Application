@@ -1,6 +1,5 @@
 import prisma from "./prisma.js";
 import logger from "./logger.js";
-
 export async function connectDB() {
   try {
     logger.info("Connecting to database...");

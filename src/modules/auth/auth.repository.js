@@ -58,3 +58,23 @@ export const findByEmail = async (email) => {
     where: { email },
   });
 };
+
+
+
+export const createAuthSession = async ({
+  userId,
+  refreshTokenHash,
+  ipAddress,
+  userAgent,
+  expiresAt,
+}) => {
+  return prisma.authSession.create({
+    data: {
+      userId,
+      refreshTokenHash,
+      ipAddress,
+      userAgent,
+      expiresAt,
+    },
+  });
+};
