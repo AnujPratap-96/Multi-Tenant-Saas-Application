@@ -8,7 +8,7 @@ This project follows **real SaaS architecture principles**, not tutorial shortcu
 
 ## 🗺️ Database Architecture (ER Diagram)
 
-![Database ER Diagram](./schemas.png)
+![Database ER Diagram](./schemas.svg)
 
 ---
 
