@@ -58,3 +58,38 @@ export const loginController = asyncHandler(async (req, res) => {
     });
     return successResponse(res, { message: "Login successful" });
 });
+
+import asyncHandler from "express-async-handler";
+import { googleLoginService } from "./auth.service.js";
+import { getRequestContext } from "../../utils/requestContext.js";
+import { env } from "../../config/env.js";
+
+export const googleCallbackController = asyncHandler(async (req, res) => {
+  const { ipAddress, userAgent } = getRequestContext(req);
+
+  // req.user is set by passport-google strategy
+  const { accessToken, refreshToken } = await googleLoginService(
+    req.user,
+    ipAddress,
+    userAgent
+  );
+
+  // 🍪 Access token cookie
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: false, // true in prod with HTTPS
+    maxAge: env.ACCESS_TOKEN_COOKIE_MAX_AGE,
+    sameSite: "lax",
+  });
+
+  // 🍪 Refresh token cookie
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false,
+    maxAge: env.REFRESH_TOKEN_COOKIE_MAX_AGE,
+    sameSite: "lax",
+  });
+
+  // 🚀 Redirect to frontend (NO TOKENS IN URL)
+  return res.redirect(env.FRONTEND_URL);
+});

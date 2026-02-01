@@ -9,6 +9,9 @@ import requestLogger from "./middlewares/requestLogger.middleware.js";
 import { API_PREFIX } from "./config/version.js";
 import { env } from "./config/env.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import passport from "./lib/passport.js";
+
+
 const app = express();
 
 
@@ -44,6 +47,7 @@ app.use(cookieParser());
 
 
 app.use(requestLogger);
+app.use(passport.initialize());
 
 
 

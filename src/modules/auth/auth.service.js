@@ -170,3 +170,40 @@ export const loginService = async (email, password, ipAddress, userAgent) => {
   });
   return { accessToken, refreshToken };
 };
+
+
+
+export const googleLoginService = async (user, ipAddress, userAgent) => {
+  // 🔐 Tokens
+  const { accessToken, refreshToken } = await generateAuthToken({
+    userId: user.id,
+    email: user.email,
+  });
+
+  // 🔁 Create session
+  await createAuthSession({
+    userId: user.id,
+    refreshTokenHash: crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex"),
+    ipAddress,
+    userAgent,
+    expiresAt: new Date(Date.now() + env.JWT_REFRESH_EXPIRES_IN),
+  });
+
+  // 🕒 Update last login
+  await updateLastLogin(user.id);
+
+  // 🧾 Audit log
+  await createAuditLog({
+    userId: user.id,
+    action: "LOGIN",
+    entityType: "USER",
+    entityId: user.id,
+    ipAddress,
+    userAgent,
+  });
+
+  return { accessToken, refreshToken };
+};
