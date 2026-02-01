@@ -53,11 +53,6 @@ export const deleteOtpByEmailPurpose = async ({ email, purpose }) => {
     where: { email, purpose },
   });
 };
-export const findByEmail = async (email) => {
-  return prisma.user.findUnique({
-    where: { email },
-  });
-};
 
 
 

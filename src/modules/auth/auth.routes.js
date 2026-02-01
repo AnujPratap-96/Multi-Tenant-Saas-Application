@@ -1,8 +1,9 @@
 import {Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
-import {registerController , verifyEmailController , setPasswordController} from './auth.controller.js';
+import {registerController , verifyEmailController , setPasswordController , loginController, googleCallbackController} from './auth.controller.js';
 import { signUpSchema , verifyEmailSchema , setPasswordSchema , loginSchema  } from './auth.schema.js';
 import {verifySignupToken , verifyPasswordToken} from '../../middlewares/auth.middleware.js';
+import passport from 'passport';
 
 const router = Router();
 

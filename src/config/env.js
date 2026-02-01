@@ -40,6 +40,11 @@ const envSchema = z
     BREVO_API_KEY: z.string().min(1),
     // Logging
     // LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]),
+
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CALLBACK_URL: z.string().min(1),
+    
   });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {

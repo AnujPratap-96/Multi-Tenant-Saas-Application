@@ -2,7 +2,7 @@ import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
 import { sendOtpEmail, sendWelcomeEmail } from "../../lib/sendEmail.js";
 import { generateOtp, verifyOtpCode } from "../../utils/generate-Otp.js";
-import { findActiveOtp, createOtp, markOtpAsUsed, createAuthSession } from "./auth.repository.js";
+import { findActiveOtp, createOtp, markOtpAsUsed, createAuthSession, deactivateOtp , incrementAttempts } from "./auth.repository.js";
 import crypto from "crypto";
 import { createAuditLog } from "../audit-log/audit-log.repository.js";
 import { findUserByEmail, updateLastLogin, createUser } from "../users/user.repository.js";
@@ -21,7 +21,7 @@ export const generateOtpService = async (email) => {
     email,
     purpose: "SIGNUP",
   });
-  // 🔁 RESEND LOGIC
+  
   if (activeOtp) {
     const now = Date.now();
     if (activeOtp.resendCount >= env.MAX_RESEND) {
@@ -31,10 +31,10 @@ export const generateOtpService = async (email) => {
     if (now - activeOtp.lastSentAt.getTime() < RESEND_COOLDOWN_MS) {
       throw new ApiError(429, "Please wait before resending OTP");
     }
-    // deactivate old OTP
+    
     await deactivateOtp(activeOtp.id);
   }
-  // generate new OTP
+  
   const { otp, hash } = generateOtp(env.OTP_LENGTH);
   const expiresAt = new Date(
     Date.now() + env.OTP_EXPIRES_IN
@@ -54,6 +54,7 @@ export const generateOtpService = async (email) => {
   });
   return { token };
 };
+
 export const verifyOtpService = async (email, code) => {
   const activeOtp = await findActiveOtp({
     email,
@@ -62,7 +63,7 @@ export const verifyOtpService = async (email, code) => {
   if (!activeOtp) {
     throw new ApiError(400, "No active OTP found or OTP expired");
   }
-  // extra safety (do not rely only on query)
+  
   if (!activeOtp.isActive) {
     throw new ApiError(400, "OTP is no longer active");
   }
@@ -85,6 +86,7 @@ export const verifyOtpService = async (email, code) => {
   });
   return { token };
 };
+
 export const setPasswordService = async (email, password, ipAddress, userAgent) => {
   const user = await findUserByEmail(email);
   if (user) {
@@ -92,19 +94,19 @@ export const setPasswordService = async (email, password, ipAddress, userAgent) 
   }
   const salt = await bcrypt.genSalt(env.BCRYPT_SALT_ROUNDS);
   const hashedPassword = await bcrypt.hash(password, salt);
-  // 👤 Create user
+  
   const newUser = await createUser({
     email,
-    password: hashedPassword, // 🔴 ensure this matches repo
+    password: hashedPassword, 
   });
-  // 🕒 Update last login
+  
   await updateLastLogin(newUser.id);
-  // 🔐 Tokens
+  
   const { accessToken, refreshToken } = await generateAuthToken({
     userId: newUser.id,
     email: newUser.email,
   });
-  // 🔁 Session
+  
   await createAuthSession({
     userId: newUser.id,
     refreshTokenHash: crypto
@@ -115,7 +117,7 @@ export const setPasswordService = async (email, password, ipAddress, userAgent) 
     userAgent,
     expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_COOKIE_MAX_AGE),
   });
-  // 🧾 Audit log
+  
   await createAuditLog({
     userId: newUser.id,
     action: "CREATE",
@@ -128,10 +130,11 @@ export const setPasswordService = async (email, password, ipAddress, userAgent) 
       emailVerified: true,
     },
   });
-  // 📧 Email
+  
   await sendWelcomeEmail(email, newUser.name);
   return { accessToken, refreshToken };
 };
+
 export const loginService = async (email, password, ipAddress, userAgent) => {
   const user = await findUserByEmail(email);
   if (!user || !user.isActive) {
@@ -141,12 +144,12 @@ export const loginService = async (email, password, ipAddress, userAgent) => {
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid credentials");
   }
-  // 🔐 Tokens
+  
   const { accessToken, refreshToken } = await generateAuthToken({
     userId: user.id,
     email: user.email,
   });
-  // 🔁 Create session
+  
   await createAuthSession({
     userId: user.id,
     refreshTokenHash: crypto
@@ -155,11 +158,11 @@ export const loginService = async (email, password, ipAddress, userAgent) => {
       .digest("hex"),
     ipAddress,
     userAgent,
-    expiresAt: new Date(Date.now() + env.JWT_REFRESH_EXPIRES_IN),
+    expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_COOKIE_MAX_AGE),
   });
-  // 🕒 Update last login
+  
   await updateLastLogin(user.id);
-  // 🧾 Audit log
+  
   await createAuditLog({
     userId: user.id,
     action: "LOGIN",
@@ -171,16 +174,15 @@ export const loginService = async (email, password, ipAddress, userAgent) => {
   return { accessToken, refreshToken };
 };
 
-
-
 export const googleLoginService = async (user, ipAddress, userAgent) => {
-  // 🔐 Tokens
+  if(!user || !user.isActive) {
+    throw new ApiError(401, "Invalid credentials");
+  }
   const { accessToken, refreshToken } = await generateAuthToken({
     userId: user.id,
     email: user.email,
   });
 
-  // 🔁 Create session
   await createAuthSession({
     userId: user.id,
     refreshTokenHash: crypto
@@ -189,13 +191,11 @@ export const googleLoginService = async (user, ipAddress, userAgent) => {
       .digest("hex"),
     ipAddress,
     userAgent,
-    expiresAt: new Date(Date.now() + env.JWT_REFRESH_EXPIRES_IN),
+    expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_COOKIE_MAX_AGE),
   });
 
-  // 🕒 Update last login
   await updateLastLogin(user.id);
 
-  // 🧾 Audit log
   await createAuditLog({
     userId: user.id,
     action: "LOGIN",

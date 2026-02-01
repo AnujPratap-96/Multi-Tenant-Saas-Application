@@ -57,3 +57,5 @@ app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(errorMiddleware);
 
 export default app;
+
+
