@@ -29,4 +29,6 @@ router.get(
   }),
   googleCallbackController
 );
+
+router.post("/logout", requireAuth, logoutController);
 export default router;

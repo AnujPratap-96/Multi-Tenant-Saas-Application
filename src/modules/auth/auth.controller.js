@@ -99,9 +99,27 @@ export const googleCallbackController = asyncHandler(async (req, res) => {
   return res.redirect(redirectUrl);
 });
 
+
+
+
 export const logoutController = asyncHandler(async (req, res) => {
-  // You should also add this controller
-  clearAuthCookies(res);
-  
-  return successResponse(res, { message: "Logged out successfully" });
+  const { ipAddress, userAgent } = getRequestContext(req);
+
+  const refreshToken = req.cookies?.refreshToken;
+  const userId = req.user?.id; // from auth middleware
+
+  await logoutService({
+    userId,
+    refreshToken,
+    ipAddress,
+    userAgent,
+  });
+
+  // 🍪 Clear cookies
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+
+  return successResponse(res, {
+    message: "Logged out successfully",
+  });
 });

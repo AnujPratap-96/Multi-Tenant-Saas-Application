@@ -207,3 +207,35 @@ export const googleLoginService = async (user, ipAddress, userAgent) => {
 
   return { accessToken, refreshToken };
 };
+
+
+
+export const logoutService = async ({
+  userId,
+  refreshToken,
+  ipAddress,
+  userAgent,
+}) => {
+  if (!refreshToken) {
+    throw new ApiError(401, "Not authenticated");
+  }
+
+  // 🔁 Revoke session
+  const result = await revokeAuthSessionByRefreshToken(refreshToken);
+
+  if (result.count === 0) {
+    throw new ApiError(401, "Session already revoked or invalid");
+  }
+
+  // 🧾 Audit log
+  await createAuditLog({
+    userId,
+    action: "LOGOUT",
+    entityType: "SESSION",
+    entityId: userId,
+    ipAddress,
+    userAgent,
+  });
+
+  return true;
+};

@@ -73,3 +73,21 @@ export const createAuthSession = async ({
     },
   });
 };
+
+export const revokeAuthSessionByRefreshToken = async (refreshToken) => {
+  const refreshTokenHash = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+
+  return prisma.authSession.updateMany({
+    where: {
+      refreshTokenHash,
+      isRevoked: false,
+    },
+    data: {
+      isRevoked: true,
+      revokedAt: new Date(),
+    },
+  });
+};
