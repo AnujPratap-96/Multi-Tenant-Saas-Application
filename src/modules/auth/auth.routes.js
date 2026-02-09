@@ -11,6 +11,7 @@ router.post('/register', validate(signUpSchema), registerController);
 router.post('/verify-email', verifySignupToken, validate(verifyEmailSchema), verifyEmailController);
 router.post('/set-password', verifyPasswordToken, validate(setPasswordSchema), setPasswordController);
 router.post("/login", validate(loginSchema), loginController);
+router.post("/forgot-password", validate(signUpSchema) , );
 
 // 🔹 Step 1: Redirect to Google
 router.get(

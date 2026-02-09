@@ -1,13 +1,15 @@
 import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
-import { sendOtpEmail, sendWelcomeEmail } from "../../lib/sendEmail.js";
+import  sendEmail  from "../../lib/sendEmail.js";
 import { generateOtp, verifyOtpCode } from "../../utils/generate-Otp.js";
-import { findActiveOtp, createOtp, markOtpAsUsed, createAuthSession, deactivateOtp , incrementAttempts } from "./auth.repository.js";
+import { findActiveOtp, createOtp, markOtpAsUsed, createAuthSession, deactivateOtp, incrementAttempts } from "./auth.repository.js";
 import crypto from "crypto";
 import { createAuditLog } from "../audit-log/audit-log.repository.js";
 import { findUserByEmail, updateLastLogin, createUser } from "../users/user.repository.js";
 import { generateSignupToken, generateAuthToken } from "../../lib/jwt.js";
 import bcrypt from "bcryptjs";
+import { otpTemplate , forgotPasswordTemplate } from "../../templates/otp.template.js";
+import { welcomeTemplate } from "../../templates/welcome.template.js";
 
 export const generateOtpService = async (email) => {
   if (!email) {
@@ -21,7 +23,7 @@ export const generateOtpService = async (email) => {
     email,
     purpose: "SIGNUP",
   });
-  
+
   if (activeOtp) {
     const now = Date.now();
     if (activeOtp.resendCount >= env.MAX_RESEND) {
@@ -31,10 +33,10 @@ export const generateOtpService = async (email) => {
     if (now - activeOtp.lastSentAt.getTime() < RESEND_COOLDOWN_MS) {
       throw new ApiError(429, "Please wait before resending OTP");
     }
-    
+
     await deactivateOtp(activeOtp.id);
   }
-  
+
   const { otp, hash } = generateOtp(env.OTP_LENGTH);
   const expiresAt = new Date(
     Date.now() + env.OTP_EXPIRES_IN
@@ -47,12 +49,7 @@ export const generateOtpService = async (email) => {
     resendCount: activeOtp ? activeOtp.resendCount + 1 : 0,
     lastSentAt: new Date(),
   });
-  await sendOtpEmail(email, otp);
-  const token = await generateSignupToken({
-    email,
-    purpose: "SIGNUP",
-  });
-  return { token };
+  await sendEmail(email, otpTemplate(otp));
 };
 
 export const verifyOtpService = async (email, code) => {
@@ -63,7 +60,7 @@ export const verifyOtpService = async (email, code) => {
   if (!activeOtp) {
     throw new ApiError(400, "No active OTP found or OTP expired");
   }
-  
+
   if (!activeOtp.isActive) {
     throw new ApiError(400, "OTP is no longer active");
   }
@@ -79,12 +76,6 @@ export const verifyOtpService = async (email, code) => {
     throw new ApiError(400, "Invalid OTP code");
   }
   await markOtpAsUsed(activeOtp.id);
-  const token = await generateSignupToken({
-    email,
-    purpose: "COMPLETE_SIGNUP",
-    verified: true
-  });
-  return { token };
 };
 
 export const setPasswordService = async (email, password, ipAddress, userAgent) => {
@@ -94,19 +85,19 @@ export const setPasswordService = async (email, password, ipAddress, userAgent) 
   }
   const salt = await bcrypt.genSalt(env.BCRYPT_SALT_ROUNDS);
   const hashedPassword = await bcrypt.hash(password, salt);
-  
+
   const newUser = await createUser({
     email,
-    password: hashedPassword, 
+    password: hashedPassword,
   });
-  
+
   await updateLastLogin(newUser.id);
-  
+
   const { accessToken, refreshToken } = await generateAuthToken({
     userId: newUser.id,
     email: newUser.email,
   });
-  
+
   await createAuthSession({
     userId: newUser.id,
     refreshTokenHash: crypto
@@ -117,7 +108,7 @@ export const setPasswordService = async (email, password, ipAddress, userAgent) 
     userAgent,
     expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_COOKIE_MAX_AGE),
   });
-  
+
   await createAuditLog({
     userId: newUser.id,
     action: "CREATE",
@@ -130,8 +121,7 @@ export const setPasswordService = async (email, password, ipAddress, userAgent) 
       emailVerified: true,
     },
   });
-  
-  await sendWelcomeEmail(email, newUser.name);
+ await sendEmail(email , welcomeTemplate());
   return { accessToken, refreshToken };
 };
 
@@ -144,12 +134,12 @@ export const loginService = async (email, password, ipAddress, userAgent) => {
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid credentials");
   }
-  
+
   const { accessToken, refreshToken } = await generateAuthToken({
     userId: user.id,
     email: user.email,
   });
-  
+
   await createAuthSession({
     userId: user.id,
     refreshTokenHash: crypto
@@ -160,9 +150,9 @@ export const loginService = async (email, password, ipAddress, userAgent) => {
     userAgent,
     expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_COOKIE_MAX_AGE),
   });
-  
+
   await updateLastLogin(user.id);
-  
+
   await createAuditLog({
     userId: user.id,
     action: "LOGIN",
@@ -175,7 +165,7 @@ export const loginService = async (email, password, ipAddress, userAgent) => {
 };
 
 export const googleLoginService = async (user, ipAddress, userAgent) => {
-  if(!user || !user.isActive) {
+  if (!user || !user.isActive) {
     throw new ApiError(401, "Invalid credentials");
   }
   const { accessToken, refreshToken } = await generateAuthToken({
@@ -239,3 +229,41 @@ export const logoutService = async ({
 
   return true;
 };
+
+export const forgotPasswordService = async (email) => {
+
+  const user = await findUserByEmail(email);
+  if (!user) {
+    return;
+  }
+
+  const activeOtp = await findActiveOtp({
+    email,
+    purpose: "FORGOT_PASSWORD",
+  });
+  if (activeOtp) {
+    const now = Date.now();
+    if (activeOtp.resendCount >= env.MAX_RESEND) {
+      throw new ApiError(429, "OTP resend limit reached");
+    }
+    const RESEND_COOLDOWN_MS = Number(env.RESEND_COOLDOWN) * 1000;
+    if (now - activeOtp.lastSentAt.getTime() < RESEND_COOLDOWN_MS) {
+      throw new ApiError(429, "Please wait before resending OTP");
+    }
+    await deactivateOtp(activeOtp.id);
+  }
+  const { otp, hash } = generateOtp(env.OTP_LENGTH);
+  const expiresAt = new Date(
+    Date.now() + env.OTP_EXPIRES_IN
+  );
+  await createOtp({
+    email,
+    purpose: "FORGOT_PASSWORD",
+    codeHash: hash,
+    expiresAt,
+    resendCount: 0,
+    lastSentAt: new Date(),
+  });
+
+await sendEmail(email, forgotPasswordTemplate(otp));
+}

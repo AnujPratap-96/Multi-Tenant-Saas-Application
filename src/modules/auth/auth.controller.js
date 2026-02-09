@@ -15,11 +15,8 @@ import { validateRedirectUrl } from "../../utils/validators.js";
 
 export const registerController = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  const { token } = await generateOtpService(email);
-  
-  setSignupCookie(res, token, "signupToken");
-  
-  return successResponse(res, { message: "OTP sent to email" });
+  await generateOtpService(email);
+   return successResponse(res, { message: "OTP sent to email" });
 });
 
 export const verifyEmailController = asyncHandler(async (req, res) => {
@@ -122,4 +119,11 @@ export const logoutController = asyncHandler(async (req, res) => {
   return successResponse(res, {
     message: "Logged out successfully",
   });
+});
+
+
+export const forgotPasswordController = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const {token} = await forgotPasswordService(email);
+
 });
