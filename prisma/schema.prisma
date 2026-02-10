@@ -195,21 +195,28 @@ model TaskComment {
 // EMAIL OTPs (OTP-FIRST SIGNUP)
 //////////////////////
 model EmailOtp {
-  id String @id @default(uuid())
-  email   String
-  purpose OtpPurpose
-  codeHash  String
-  expiresAt DateTime
-  attempts    Int @default(0)
-  maxAttempts Int @default(5)
-  resendCount Int      @default(0)
-  lastSentAt  DateTime
-  isActive Boolean @default(true)
-  createdAt DateTime  @default(now())
-  usedAt    DateTime?
+  id          String      @id @default(uuid())
+  email       String
+  purpose     OtpPurpose
+  codeHash    String      // Now stores combined hash of OTP + token
+  token       String?      // Random token for link verification
+  requestId   String?     // Request ID from creation (for debugging/logging)
+  
+  expiresAt   DateTime
+  attempts    Int         @default(0)
+  maxAttempts Int         @default(5)
+  resendCount Int         @default(0)
+  lastSentAt  DateTime    @default(now())
+  
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  usedAt      DateTime?
+  
   @@index([email, purpose])
+  @@index([id, token])      // For verification lookup
   @@index([expiresAt])
 }
+
 enum OtpPurpose {
   SIGNUP
   LOGIN

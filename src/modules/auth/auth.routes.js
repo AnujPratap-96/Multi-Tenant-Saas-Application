@@ -1,14 +1,14 @@
 import {Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
-import {registerController , verifyEmailController , setPasswordController , loginController, googleCallbackController} from './auth.controller.js';
+import {registerController , verifyEmailController , setPasswordController , loginController, googleCallbackController , logoutController} from './auth.controller.js';
 import { signUpSchema , verifyEmailSchema , setPasswordSchema , loginSchema  } from './auth.schema.js';
-import {verifySignupToken , verifyPasswordToken} from '../../middlewares/auth.middleware.js';
+import {requireAccessToken , verifyPasswordToken} from '../../middlewares/auth.middleware.js';
 import passport from 'passport';
 
 const router = Router();
 
 router.post('/register', validate(signUpSchema), registerController);
-router.post('/verify-email', verifySignupToken, validate(verifyEmailSchema), verifyEmailController);
+router.post('/verify-email',  validate(verifyEmailSchema), verifyEmailController);
 router.post('/set-password', verifyPasswordToken, validate(setPasswordSchema), setPasswordController);
 router.post("/login", validate(loginSchema), loginController);
 router.post("/forgot-password", validate(signUpSchema) , );
@@ -31,5 +31,5 @@ router.get(
   googleCallbackController
 );
 
-router.post("/logout", requireAuth, logoutController);
+router.post("/logout", requireAccessToken, logoutController);
 export default router;

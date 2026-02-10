@@ -15,18 +15,17 @@ import { validateRedirectUrl } from "../../utils/validators.js";
 
 export const registerController = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  await generateOtpService(email);
-   return successResponse(res, { message: "OTP sent to email" });
+  const id = req.id;
+ const token = await generateOtpService(email , id);
+   return successResponse(res, { message: "OTP sent to email" , token , requestId: id });
 });
 
 export const verifyEmailController = asyncHandler(async (req, res) => {
-  const email = req.signupEmail;
+  const { token , requestId} = req.query;
   const { otp } = req.body;
   
-  const { token } = await verifyOtpService(email, otp);
-  
-  setSignupCookie(res, token, "passwordToken");
-  
+ const passwordToken = await verifyOtpService(otp, token, requestId);
+  setSignupCookie(res, passwordToken , "passwordToken");
   return successResponse(res, { message: "Email verified successfully" });
 });
 
@@ -42,8 +41,6 @@ export const setPasswordController = asyncHandler(async (req, res) => {
     userAgent
   );
   
-  // Clear signup cookies
-  res.clearCookie("signupToken");
   res.clearCookie("passwordToken");
   
   setAuthCookies(res, { accessToken, refreshToken });

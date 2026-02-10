@@ -1,17 +1,18 @@
 import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
-import  sendEmail  from "../../lib/sendEmail.js";
-import { generateOtp, verifyOtpCode } from "../../utils/generate-Otp.js";
-import { findActiveOtp, createOtp, markOtpAsUsed, createAuthSession, deactivateOtp, incrementAttempts } from "./auth.repository.js";
+import sendEmail from "../../lib/sendEmail.js";
+import { generateOtp, verifyOtpWithToken } from "../../utils/generate-Otp.js";
+import { findActiveOtp, createOtp, markOtpAsUsed, createAuthSession, deactivateOtp, incrementAttempts, findOtpByEmailPurpose, revokeAuthSessionByRefreshToken } from "./auth.repository.js";
 import crypto from "crypto";
 import { createAuditLog } from "../audit-log/audit-log.repository.js";
 import { findUserByEmail, updateLastLogin, createUser } from "../users/user.repository.js";
 import { generateSignupToken, generateAuthToken } from "../../lib/jwt.js";
 import bcrypt from "bcryptjs";
-import { otpTemplate , forgotPasswordTemplate } from "../../templates/otp.template.js";
+import { otpTemplate, forgotPasswordTemplate } from "../../templates/otp.template.js";
 import { welcomeTemplate } from "../../templates/welcome.template.js";
 
-export const generateOtpService = async (email) => {
+
+export const generateOtpService = async (email, id) => {
   if (!email) {
     throw new ApiError(400, "Email is required");
   }
@@ -19,7 +20,7 @@ export const generateOtpService = async (email) => {
   if (existingUser) {
     throw new ApiError(400, "User with this email already exists");
   }
-  const activeOtp = await findActiveOtp({
+  const activeOtp = await findOtpByEmailPurpose({
     email,
     purpose: "SIGNUP",
   });
@@ -37,7 +38,7 @@ export const generateOtpService = async (email) => {
     await deactivateOtp(activeOtp.id);
   }
 
-  const { otp, hash } = generateOtp(env.OTP_LENGTH);
+  const { otp, token, hash } = generateOtpHash(env.OTP_LENGTH);
   const expiresAt = new Date(
     Date.now() + env.OTP_EXPIRES_IN
   );
@@ -45,16 +46,20 @@ export const generateOtpService = async (email) => {
     email,
     purpose: "SIGNUP",
     codeHash: hash,
+    token,
+    requestId: id,
     expiresAt,
     resendCount: activeOtp ? activeOtp.resendCount + 1 : 0,
     lastSentAt: new Date(),
   });
   await sendEmail(email, otpTemplate(otp));
+  return token;
 };
 
-export const verifyOtpService = async (email, code) => {
+export const verifyOtpService = async (code, token, requestId) => {
   const activeOtp = await findActiveOtp({
-    email,
+    token,
+    requestId,
     purpose: "SIGNUP",
   });
   if (!activeOtp) {
@@ -70,12 +75,14 @@ export const verifyOtpService = async (email, code) => {
   if (activeOtp.attempts >= activeOtp.maxAttempts) {
     throw new ApiError(429, "Maximum OTP verification attempts exceeded");
   }
-  const isValid = await verifyOtpCode(code, activeOtp.codeHash);
+  const isValid = await verifyOtpCode(code, token, activeOtp.codeHash);
   if (!isValid) {
     await incrementAttempts(activeOtp.id);
     throw new ApiError(400, "Invalid OTP code");
   }
   await markOtpAsUsed(activeOtp.id);
+  const signupToken = generateSignupToken({ email: activeOtp.email, purpose: "COMPLETE_SIGNUP" });
+  return signupToken;
 };
 
 export const setPasswordService = async (email, password, ipAddress, userAgent) => {
@@ -121,7 +128,7 @@ export const setPasswordService = async (email, password, ipAddress, userAgent) 
       emailVerified: true,
     },
   });
- await sendEmail(email , welcomeTemplate());
+  await sendEmail(email, welcomeTemplate());
   return { accessToken, refreshToken };
 };
 
@@ -206,9 +213,10 @@ export const logoutService = async ({
   ipAddress,
   userAgent,
 }) => {
-  if (!refreshToken) {
-    throw new ApiError(401, "Not authenticated");
-  }
+if (!refreshToken) {
+  throw new ApiError(401, "Refresh token required for logout");
+}
+
 
   // 🔁 Revoke session
   const result = await revokeAuthSessionByRefreshToken(refreshToken);
@@ -265,5 +273,5 @@ export const forgotPasswordService = async (email) => {
     lastSentAt: new Date(),
   });
 
-await sendEmail(email, forgotPasswordTemplate(otp));
+  await sendEmail(email, forgotPasswordTemplate(otp));
 }

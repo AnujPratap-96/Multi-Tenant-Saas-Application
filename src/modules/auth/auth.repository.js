@@ -1,8 +1,24 @@
 // auth.repository.js
 import prisma from '../../lib/prisma.js';
 
-export const findActiveOtp = async ({ email, purpose }) => {
+export const findActiveOtp = async ({ token,requestId ,purpose }) => {
   return prisma.emailOtp.findFirst({
+    where: {
+      token,
+      requestId,
+      purpose,
+      isActive: true,
+      expiresAt: { gt: new Date() },
+      usedAt: null,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+};
+
+export const findOtpByEmailPurpose = async ({ email, purpose }) => {
+  return prisma.emailOtp.findMany({
     where: {
       email,
       purpose,
@@ -14,7 +30,7 @@ export const findActiveOtp = async ({ email, purpose }) => {
       createdAt: "desc",
     },
   });
-};
+}
 
 export const deactivateOtp = async (id) => {
   return prisma.emailOtp.update({

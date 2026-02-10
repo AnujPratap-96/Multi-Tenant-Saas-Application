@@ -3,18 +3,7 @@ import { env } from '../config/env.js';
 import { ApiError } from '../utils/api-error.js';
 import { asyncHandler } from '../utils/async-handler.js';
 
-export const verifySignupToken = asyncHandler(async (req, res, next) => {
-    const token = req.cookies?.signupToken || req.headers.authorization?.split(" ")[1];
-    if (!token) {
-        throw new ApiError(401, "Signup token missing");
-    }
-    const payload = jwt.verify(token, env.JWT_SIGNUP_SECRET);
-    if (payload.purpose !== "SIGNUP") {
-        throw new ApiError(401, "Invalid signup token");
-    }
-    req.signupEmail = payload.email;
-    next();
-});
+
 
 export const verifyPasswordToken = asyncHandler(async (req, res, next) => {
     const token = req.cookies?.passwordToken || req.headers.authorization?.split(" ")[1];
@@ -27,4 +16,15 @@ export const verifyPasswordToken = asyncHandler(async (req, res, next) => {
     }
     req.passwordEmail = payload.email;
     next();
+});
+
+export const requireAccessToken = asyncHandler(async (req, res, next) => {
+    const token = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
+    if (!token) {
+        throw new ApiError(401, "Access token missing");
+    }
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
+    req.userId = payload.userId;
+    next();
+
 });

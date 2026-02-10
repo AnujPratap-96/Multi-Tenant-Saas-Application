@@ -1,4 +1,4 @@
-import { env } from '../../config/env.js';
+import { env } from '../config/env.js';
 
 export const welcomeTemplate = (userName = 'there') => ({
   subject: 'Welcome to Multi-Tenant App 🚀',
