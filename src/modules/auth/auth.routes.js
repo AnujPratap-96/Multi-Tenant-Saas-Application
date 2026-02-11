@@ -1,6 +1,6 @@
 import {Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
-import {registerController , verifyEmailController , setPasswordController , loginController, googleCallbackController , logoutController} from './auth.controller.js';
+import {registerController , verifyEmailController , setPasswordController , loginController, googleCallbackController , logoutController, forgotPasswordController} from './auth.controller.js';
 import { signUpSchema , verifyEmailSchema , setPasswordSchema , loginSchema  } from './auth.schema.js';
 import {requireAccessToken , verifyPasswordToken} from '../../middlewares/auth.middleware.js';
 import passport from 'passport';
@@ -11,7 +11,7 @@ router.post('/register', validate(signUpSchema), registerController);
 router.post('/verify-email',  validate(verifyEmailSchema), verifyEmailController);
 router.post('/set-password', verifyPasswordToken, validate(setPasswordSchema), setPasswordController);
 router.post("/login", validate(loginSchema), loginController);
-router.post("/forgot-password", validate(signUpSchema) , );
+router.post("/forgot-password", validate(signUpSchema) , forgotPasswordController);
 
 // 🔹 Step 1: Redirect to Google
 router.get(

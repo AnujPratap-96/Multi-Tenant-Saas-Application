@@ -2,6 +2,7 @@ import crypto from 'crypto';
 
 export const generateOtp = (length = 6, tokenLength = 32) => {
   // Generate OTP
+ 
   const otp = crypto.randomInt(
     10 ** (length - 1),
     10 ** length
@@ -15,7 +16,6 @@ export const generateOtp = (length = 6, tokenLength = 32) => {
     .createHash('sha256')
     .update(otp + token)
     .digest('hex');
-
   return { 
     otp,           // Send this via email
     token,         // Include this in the verification link

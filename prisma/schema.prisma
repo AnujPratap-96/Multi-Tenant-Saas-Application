@@ -221,6 +221,7 @@ enum OtpPurpose {
   SIGNUP
   LOGIN
   PASSWORD_RESET
+  FORGOT_PASSWORD
 }
 //////////////////////
 // AUDIT LOGS

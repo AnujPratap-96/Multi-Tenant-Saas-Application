@@ -6,7 +6,9 @@ import {
   verifyOtpService, 
   setPasswordService, 
   loginService, 
-  googleLoginService 
+  googleLoginService ,
+  logoutService,
+  forgotPasswordService
 } from "./auth.service.js";
 import { successResponse } from "../../utils/response.js";
 import { getRequestContext } from "../../utils/requestContext.js";
@@ -17,7 +19,7 @@ export const registerController = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const id = req.id;
  const token = await generateOtpService(email , id);
-   return successResponse(res, { message: "OTP sent to email" , token , requestId: id });
+   return successResponse(res, { message: "OTP sent to email" , data : {token , requestId: id} });
 });
 
 export const verifyEmailController = asyncHandler(async (req, res) => {
@@ -120,7 +122,10 @@ export const logoutController = asyncHandler(async (req, res) => {
 
 
 export const forgotPasswordController = asyncHandler(async (req, res) => {
+  console.log("Forgot password request received");
   const { email } = req.body;
-  const {token} = await forgotPasswordService(email);
+  const id = req.id;
+  const {token} = await forgotPasswordService(email , id);
 
+  return successResponse(res, { message: "OTP sent to email" , data : {token , requestId: id} });
 });

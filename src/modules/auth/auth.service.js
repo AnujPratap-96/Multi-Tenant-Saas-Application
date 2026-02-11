@@ -26,6 +26,7 @@ export const generateOtpService = async (email, id) => {
   });
 
   if (activeOtp) {
+ 
     const now = Date.now();
     if (activeOtp.resendCount >= env.MAX_RESEND) {
       throw new ApiError(429, "OTP resend limit reached");
@@ -38,29 +39,31 @@ export const generateOtpService = async (email, id) => {
     await deactivateOtp(activeOtp.id);
   }
 
-  const { otp, token, hash } = generateOtpHash(env.OTP_LENGTH);
+  const { otp, token,combinedHash } =  generateOtp(env.OTP_LENGTH);
   const expiresAt = new Date(
     Date.now() + env.OTP_EXPIRES_IN
   );
-  await createOtp({
+ const data =  await createOtp({
     email,
     purpose: "SIGNUP",
-    codeHash: hash,
+    codeHash: combinedHash,
     token,
     requestId: id,
     expiresAt,
-    resendCount: activeOtp ? activeOtp.resendCount + 1 : 0,
     lastSentAt: new Date(),
   });
+
   await sendEmail(email, otpTemplate(otp));
   return token;
 };
 
 export const verifyOtpService = async (code, token, requestId) => {
+  token = token.trim();
+  requestId = requestId.trim();
   const activeOtp = await findActiveOtp({
     token,
     requestId,
-    purpose: "SIGNUP",
+    purpose: "SIGNUP"
   });
   if (!activeOtp) {
     throw new ApiError(400, "No active OTP found or OTP expired");
@@ -75,7 +78,7 @@ export const verifyOtpService = async (code, token, requestId) => {
   if (activeOtp.attempts >= activeOtp.maxAttempts) {
     throw new ApiError(429, "Maximum OTP verification attempts exceeded");
   }
-  const isValid = await verifyOtpCode(code, token, activeOtp.codeHash);
+  const isValid = await verifyOtpWithToken(code, token, activeOtp.codeHash);
   if (!isValid) {
     await incrementAttempts(activeOtp.id);
     throw new ApiError(400, "Invalid OTP code");
@@ -238,17 +241,18 @@ if (!refreshToken) {
   return true;
 };
 
-export const forgotPasswordService = async (email) => {
+export const forgotPasswordService = async (email , id) => {
 
   const user = await findUserByEmail(email);
   if (!user) {
     return;
   }
-
-  const activeOtp = await findActiveOtp({
+console.log("User found for forgot password:", user.email);
+  const activeOtp = await findOtpByEmailPurpose({
     email,
     purpose: "FORGOT_PASSWORD",
   });
+  console.log("Active OTP for forgot password:", activeOtp);
   if (activeOtp) {
     const now = Date.now();
     if (activeOtp.resendCount >= env.MAX_RESEND) {
@@ -260,18 +264,21 @@ export const forgotPasswordService = async (email) => {
     }
     await deactivateOtp(activeOtp.id);
   }
-  const { otp, hash } = generateOtp(env.OTP_LENGTH);
+  const { otp,token , combinedHash } = generateOtp(env.OTP_LENGTH);
   const expiresAt = new Date(
     Date.now() + env.OTP_EXPIRES_IN
   );
   await createOtp({
     email,
     purpose: "FORGOT_PASSWORD",
-    codeHash: hash,
+    codeHash: combinedHash,
+    token,
+    requestId: id,
     expiresAt,
     resendCount: 0,
     lastSentAt: new Date(),
   });
 
   await sendEmail(email, forgotPasswordTemplate(otp));
+  return {token};
 }

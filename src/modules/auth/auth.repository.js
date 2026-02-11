@@ -18,7 +18,8 @@ export const findActiveOtp = async ({ token,requestId ,purpose }) => {
 };
 
 export const findOtpByEmailPurpose = async ({ email, purpose }) => {
-  return prisma.emailOtp.findMany({
+  console.log("Finding OTP for email:", email, "and purpose:", purpose);
+  return prisma.emailOtp.findFirst({
     where: {
       email,
       purpose,
