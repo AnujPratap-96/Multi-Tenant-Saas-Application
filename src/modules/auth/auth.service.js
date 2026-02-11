@@ -57,35 +57,95 @@ export const generateOtpService = async (email, id) => {
   return token;
 };
 
-export const verifyOtpService = async (code, token, requestId) => {
-  token = token.trim();
-  requestId = requestId.trim();
+export const verifyOtpService = async (code, token, requestId, purpose = "SIGNUP") => {
+  // Clean inputs
+  token = token?.trim();
+  requestId = requestId?.trim();
+  code = code?.trim();
+  
+  // Find active OTP
   const activeOtp = await findActiveOtp({
     token,
     requestId,
-    purpose: "SIGNUP"
+    purpose
   });
+  
   if (!activeOtp) {
     throw new ApiError(400, "No active OTP found or OTP expired");
   }
 
-  if (!activeOtp.isActive) {
-    throw new ApiError(400, "OTP is no longer active");
-  }
-  if (activeOtp.expiresAt < new Date()) {
-    throw new ApiError(400, "OTP has expired");
-  }
-  if (activeOtp.attempts >= activeOtp.maxAttempts) {
-    throw new ApiError(429, "Maximum OTP verification attempts exceeded");
-  }
+  // Validate OTP state
+  validateOtpState(activeOtp);
+  
+  // Verify the OTP code
   const isValid = await verifyOtpWithToken(code, token, activeOtp.codeHash);
   if (!isValid) {
     await incrementAttempts(activeOtp.id);
     throw new ApiError(400, "Invalid OTP code");
   }
+  
+  // Mark as used
   await markOtpAsUsed(activeOtp.id);
-  const signupToken = generateSignupToken({ email: activeOtp.email, purpose: "COMPLETE_SIGNUP" });
-  return signupToken;
+  
+  // Handle purpose-specific logic
+  return handleOtpSuccess(activeOtp, purpose);
+};
+
+// Helper function to validate OTP state
+const validateOtpState = (otp) => {
+  if (!otp.isActive) {
+    throw new ApiError(400, "OTP is no longer active");
+  }
+  
+  if (otp.expiresAt < new Date()) {
+    throw new ApiError(400, "OTP has expired");
+  }
+  
+  if (otp.attempts >= otp.maxAttempts) {
+    throw new ApiError(429, "Maximum OTP verification attempts exceeded");
+  }
+};
+
+// Handle different purposes after successful OTP verification
+const handleOtpSuccess = async (otp, purpose) => {
+  switch (purpose) {
+    case "SIGNUP":
+      return {
+        success: true,
+        token: generateSignupToken({ 
+          email: otp.email, 
+          purpose: "COMPLETE_SIGNUP" 
+        }),
+        message: "Email verified successfully. Please complete signup."
+      };
+      
+    case "LOGIN":
+      return {
+        success: true,
+        token: generateAuthToken({ 
+          email: otp.email,
+          purpose: "LOGIN"
+        }),
+        message: "Login successful"
+      };
+      
+    case "FORGOT_PASSWORD":
+      return {
+        success: true,
+        token: generatePasswordResetToken({ 
+          email: otp.email,
+          purpose: "FORGOT_PASSWORD"
+        }),
+        message: "OTP verified. Please set your new password."
+      };
+      
+    default:
+      return {
+        success: true,
+        email: otp.email,
+        message: "OTP verified successfully"
+      };
+  }
 };
 
 export const setPasswordService = async (email, password, ipAddress, userAgent) => {
