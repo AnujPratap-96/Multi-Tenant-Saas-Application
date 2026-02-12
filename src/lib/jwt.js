@@ -8,7 +8,7 @@ export const generateSignupToken = async ({ email, purpose, verified = false }) 
     { expiresIn: env.JWT_SIGNUP_EXPIRES_IN }
   );
 };
-export const generateAuthToken = async ({ userId, email }) => {
+export const generateAuthToken = async ({ userId = '', email }) => {
   const payload = { userId, email };
   const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_EXPIRES_IN });
   const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES_IN });

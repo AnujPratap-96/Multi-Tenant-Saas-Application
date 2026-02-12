@@ -1,5 +1,5 @@
 // auth.repository.js
-import prisma from '../../lib/prisma.js';
+import prisma from '../../../lib/prisma.js';
 
 export const findActiveOtp = async ({ token,requestId ,purpose }) => {
   return prisma.emailOtp.findFirst({
