@@ -15,12 +15,36 @@ export const createUser = async ({
     data: {
       email,
       password,
-      emailVerified: true,   
+      emailVerified: true,
       isActive: true,
     },
   });
 };
 
+/**
+ * Update user's password
+ */
+export const updateUserPassword = async (userId, hashedPassword) => {
+  if (!userId || !hashedPassword) {
+    throw new Error("User ID and password are required");
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      password: hashedPassword,
+      updatedAt: new Date(),
+    },
+    select: {
+      id: true,
+      email: true,
+      emailVerified: true,
+      updatedAt: true,
+    },
+  });
+
+  return user;
+};
 
 export const updateLastLogin = (userId) => {
   return prisma.user.update({

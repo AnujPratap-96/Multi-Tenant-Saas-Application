@@ -37,3 +37,67 @@ export const welcomeTemplate = (userName = 'there') => ({
     </div>
   `,
 });
+
+export const passwordSetTemplate = () => {
+  return `
+  <div style="font-family: Arial, sans-serif; background-color: #f5f7fa; padding: 40px 0;">
+    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 30px;">
+      
+      <h2 style="color: #222;">Password Successfully Set</h2>
+
+      <p style="color: #555; font-size: 15px; line-height: 1.6;">
+        Your password has been successfully set for your account.
+      </p>
+
+      <p style="color: #555; font-size: 15px; line-height: 1.6;">
+        You can now log in using your email and password.
+      </p>
+
+      <div style="margin-top: 30px; padding: 15px; background-color: #f0f4ff; border-radius: 6px;">
+        <p style="margin: 0; font-size: 14px; color: #333;">
+          If you did not perform this action, please contact our support team immediately.
+        </p>
+      </div>
+
+      <p style="margin-top: 40px; font-size: 12px; color: #999;">
+        This is an automated message. Please do not reply.
+      </p>
+
+    </div>
+  </div>
+  `;
+};
+
+export const passwordChangedTemplate = () => {
+  return `
+  <div style="font-family: Arial, sans-serif; background-color: #f5f7fa; padding: 40px 0;">
+    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 30px;">
+      
+      <h2 style="color: #222;">Your Password Has Been Changed</h2>
+
+      <p style="color: #555; font-size: 15px; line-height: 1.6;">
+        We wanted to let you know that your account password was recently changed.
+      </p>
+
+      <p style="color: #555; font-size: 15px; line-height: 1.6;">
+        If you made this change, no further action is required.
+      </p>
+
+      <div style="margin-top: 25px; padding: 15px; background-color: #ffecec; border-radius: 6px;">
+        <p style="margin: 0; font-size: 14px; color: #a00;">
+          If you did not change your password, please reset it immediately and contact support.
+        </p>
+      </div>
+
+      <p style="margin-top: 40px; font-size: 12px; color: #999;">
+        For security reasons, we recommend keeping your password confidential and secure.
+      </p>
+
+      <p style="font-size: 12px; color: #999;">
+        This is an automated security notification.
+      </p>
+
+    </div>
+  </div>
+  `;
+};

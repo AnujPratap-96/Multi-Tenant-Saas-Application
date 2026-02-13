@@ -1,42 +1,52 @@
+// src/modules/auth/services/verify-otp.js
+
 import { ApiError } from "../../../utils/api-error.js";
+import { env } from "../../../config/env.js";
+import { OTP_MESSAGES } from "../constants/auth.constants.js";
 import { verifyOtpWithToken } from "../utils/otp-geneator.js";
 
 import {
-  findActiveOtp,
-  incrementAttempts,
-  markOtpAsUsed,
-} from "../repositories/auth.repository.js";
+  getOtp,
+  updateOtp,
+  deleteOtp,
+} from "../redis/otp.redis.js";
 
-import { OTP_MESSAGES } from "../constants/auth.constants.js";
 import { validateOtpState } from "../utils/otp-state.validator.js";
 import { handleOtpSuccess } from "../utils/otp-success.handler.js";
 
 export const verifyOtpService = async ({
   code,
-  token,
   requestId,
-  purpose,
 }) => {
-  const activeOtp = await findActiveOtp({ token, requestId, purpose });
-
-  if (!activeOtp) {
-    throw new ApiError(400, OTP_MESSAGES.INVALID);
+  if (!requestId) {
+    throw new ApiError(400, "RequestId is required");
   }
 
-  await validateOtpState(activeOtp);
+  const otpData = await getOtp(requestId);
+
+  validateOtpState(otpData);
 
   const isValid = await verifyOtpWithToken(
     code,
-    token,
-    activeOtp.codeHash
+    requestId,
+    otpData.codeHash
   );
 
   if (!isValid) {
-    await incrementAttempts(activeOtp.id);
+    otpData.attempts += 1;
+
+    const ttl = Math.floor(env.OTP_EXPIRES_IN / 1000);
+
+    await updateOtp({
+      requestId,
+      data: otpData,
+      ttl,
+    });
+
     throw new ApiError(400, OTP_MESSAGES.INVALID);
   }
 
-  await markOtpAsUsed(activeOtp.id);
+  await deleteOtp(requestId);
 
-  return handleOtpSuccess(activeOtp, purpose);
+  return handleOtpSuccess(otpData, otpData.purpose);
 };

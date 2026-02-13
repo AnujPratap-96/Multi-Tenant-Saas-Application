@@ -1,39 +1,67 @@
-import {
-  generateSignupToken,
-  generateAuthToken,
-  generatePasswordResetToken,
-} from "../../../lib/jwt.js";
-
-import { OTP_PURPOSE } from "../constants/auth.constants.js";
-
 export const handleOtpSuccess = (otp, purpose) => {
   switch (purpose) {
-    case OTP_PURPOSE.SIGNUP:
-      return {
-        success: true,
-        token: generateSignupToken({
-          email: otp.email,
-          purpose: "COMPLETE_SIGNUP",
-        }),
-      };
+    case OTP_PURPOSE.SIGNUP: {
+      const token = generateSignupToken({
+        email: otp.email,
+        purpose: "COMPLETE_SIGNUP",
+      });
 
-    case OTP_PURPOSE.LOGIN:
       return {
         success: true,
-        token: generateAuthToken({
-          email: otp.email,
-        }),
+        purpose,
+        cookies: [
+          {
+            name: "passwordToken",
+            value: token,
+          },
+        ],
       };
+    }
 
-    case OTP_PURPOSE.FORGOT_PASSWORD:
+    case OTP_PURPOSE.LOGIN: {
+      const { accessToken, refreshToken } =
+        generateAuthToken({
+          email: otp.email,
+        });
+
       return {
         success: true,
-        token: generatePasswordResetToken({
-          email: otp.email,
-        }),
+        purpose,
+        cookies: [
+          {
+            name: "accessToken",
+            value: accessToken,
+          },
+          {
+            name: "refreshToken",
+            value: refreshToken,
+          },
+        ],
       };
+    }
+
+    case OTP_PURPOSE.FORGOT_PASSWORD: {
+      const token = generatePasswordResetToken({
+        email: otp.email,
+      });
+
+      return {
+        success: true,
+        purpose,
+        cookies: [
+          {
+            name: "resetToken",
+            value: token,
+          },
+        ],
+      };
+    }
 
     default:
-      return { success: true };
+      return {
+        success: true,
+        purpose,
+        cookies: [],
+      };
   }
 };

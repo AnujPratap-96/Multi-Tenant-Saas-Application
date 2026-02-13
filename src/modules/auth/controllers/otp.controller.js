@@ -3,11 +3,24 @@ import { verifyOtpService } from "../services/verify-otp.service.js";
 import { setSignupCookie } from "../../../utils/cookies.js";
 import { successResponse } from "../../../utils/response.js";
 
-export const verifyEmailController = asyncHandler(async (req, res) => {
-  const { token , requestId} = req.query;
+export const verifyOtpController = asyncHandler(async (req, res) => {
+  const { requestId } = req.query;
   const { otp } = req.body;
-  
- const passwordToken = await verifyOtpService(otp, token, requestId);
-  setSignupCookie(res, passwordToken , "passwordToken");
-  return successResponse(res, { message: "Email verified successfully" });
+
+  const result = await verifyOtpService({
+    code: otp,
+    requestId,
+  });
+
+  // 🔐 Set all cookies dynamically
+  if (result.cookies?.length) {
+    result.cookies.forEach((cookie) => {
+      setSignupCookie(res, cookie.value, cookie.name);
+    });
+  }
+
+  return successResponse(res, {
+    message: "OTP verified successfully",
+    purpose: result.purpose,
+  });
 });

@@ -4,6 +4,12 @@ export const OTP_PURPOSE = {
   FORGOT_PASSWORD: "FORGOT_PASSWORD",
 };
 
+export const PASSWORD_ACTION = {
+  SIGNUP: "SIGNUP",
+  SET_PASSWORD: "SET_PASSWORD",
+  RESET_PASSWORD: "RESET_PASSWORD",
+};
+
 export const OTP_MESSAGES = {
   INVALID: "Invalid or expired OTP",
   EXPIRED: "OTP has expired",

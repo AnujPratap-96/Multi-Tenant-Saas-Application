@@ -1,20 +1,47 @@
+// src/modules/auth/utils/otp-resend-handler.js
+
 import { ApiError } from "../../../utils/api-error.js";
 import { env } from "../../../config/env.js";
 import { OTP_MESSAGES } from "../constants/auth.constants.js";
-import { deactivateOtp } from "../repositories/auth.repository.js";
+import { generateOtp } from "./otp-geneator.js";
+import { updateOtp } from "../redis/otp.redis.js";
+import sendEmail from "../../../lib/sendEmail.js";
+import { otpTemplate } from "../../../templates/otp.template.js";
 
-export const handleOtpResendLogic = async (activeOtp) => {
+export const handleOtpResendLogic = async ({
+  otpData,
+  requestId,
+  email,
+}) => {
   const now = Date.now();
+  const cooldown =
+    Number(env.OTP_RESEND_COOLDOWN_MS) || 60000;
 
-  if (activeOtp.resendCount >= env.MAX_RESEND) {
+  if (otpData.resendCount >= env.MAX_RESEND) {
     throw new ApiError(429, OTP_MESSAGES.RESEND_LIMIT);
   }
 
-  const cooldown = Number(env.OTP_RESEND_COOLDOWN_MS || 60000);
-
-  if (now - activeOtp.lastSentAt.getTime() < cooldown) {
+  if (now - otpData.lastSentAt < cooldown) {
     throw new ApiError(429, OTP_MESSAGES.RESEND_COOLDOWN);
   }
 
-  await deactivateOtp(activeOtp.id);
+  const { otp, combinedHash } =
+    generateOtp(env.OTP_LENGTH);
+
+  otpData.codeHash = combinedHash;
+  otpData.resendCount += 1;
+  otpData.lastSentAt = now;
+  otpData.attempts = 0;
+
+  const ttl = Math.floor(env.OTP_EXPIRES_IN / 1000);
+
+  await updateOtp({
+    requestId,
+    data: otpData,
+    ttl,
+  });
+
+  await sendEmail(email, otpTemplate(otp));
+
+  return { requestId };
 };

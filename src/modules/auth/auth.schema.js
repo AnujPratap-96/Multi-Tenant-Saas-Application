@@ -9,7 +9,7 @@ export const signUpSchema = requestSchema({
 });
 
 
-export const verifyEmailSchema = requestSchema({
+export const verifyOtpSchema = requestSchema({
   body: z.object({
     otp: z.string().length(6),
   }),
