@@ -23,8 +23,8 @@ export const executePasswordAction = async ({
         emailVerified: true,
       });
 
-    case PASSWORD_ACTION.SET_PASSWORD:
-    case PASSWORD_ACTION.RESET_PASSWORD:
+    case PASSWORD_ACTION.FORGOT_PASSWORD:
+    case PASSWORD_ACTION.CHANGE_PASSWORD:
       return updateUserPassword(existingUser.id, hashedPassword);
 
     default:

@@ -3,16 +3,16 @@
 import { sendEmail } from "../../../services/email.service.js";
 import {
   welcomeTemplate,
-  passwordSetTemplate,
-  passwordChangedTemplate,
+  forgotpasswordTemplate,
+  passwordResetTemplate
 } from "../../../templates/welcome.template.js";
-import { PASSWORD_ACTION } from "../constants/password.constants.js";
+import { PASSWORD_ACTION } from "../constants/auth.constants.js";
 
 export const sendPasswordActionEmail = async (action, email) => {
   const templates = {
     [PASSWORD_ACTION.SIGNUP]: welcomeTemplate,
-    [PASSWORD_ACTION.SET_PASSWORD]: passwordSetTemplate,
-    [PASSWORD_ACTION.RESET_PASSWORD]: passwordChangedTemplate,
+    [PASSWORD_ACTION.FORGOT_PASSWORD]: forgotpasswordTemplate,
+    [PASSWORD_ACTION.CHANGE_PASSWORD]: passwordResetTemplate,
   };
 
   const template = templates[action];

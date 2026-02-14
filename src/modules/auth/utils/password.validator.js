@@ -14,20 +14,8 @@ export const validatePasswordAction = (action, existingUser) => {
         throw new ApiError(400, "User with this email already exists");
       }
       break;
-
-    case PASSWORD_ACTION.SET_PASSWORD:
-      if (!existingUser) {
-        throw new ApiError(404, "User not found");
-      }
-      if (existingUser.password) {
-        throw new ApiError(
-          400,
-          "Password already set. Use reset password instead."
-        );
-      }
-      break;
-
-    case PASSWORD_ACTION.RESET_PASSWORD:
+    case PASSWORD_ACTION.FORGOT_PASSWORD:
+    case PASSWORD_ACTION.CHANGE_PASSWORD:  
       if (!existingUser) {
         throw new ApiError(404, "User not found");
       }

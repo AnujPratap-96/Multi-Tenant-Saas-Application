@@ -12,7 +12,7 @@ export const createPasswordAuditLog = async ({
   const auditActions = {
     [PASSWORD_ACTION.SIGNUP]: "CREATE",
     [PASSWORD_ACTION.SET_PASSWORD]: "UPDATE",
-    [PASSWORD_ACTION.RESET_PASSWORD]: "UPDATE",
+    [PASSWORD_ACTION.CHANGE_PASSWORD]: "UPDATE",
   };
 
   const auditValues = {
@@ -24,8 +24,8 @@ export const createPasswordAuditLog = async ({
     [PASSWORD_ACTION.SET_PASSWORD]: {
       action: "Password set for existing account",
     },
-    [PASSWORD_ACTION.RESET_PASSWORD]: {
-      action: "Password reset completed",
+    [PASSWORD_ACTION.CHANGE_PASSWORD]: {
+      action: "Password changed",
     },
   };
 

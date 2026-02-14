@@ -1,6 +1,6 @@
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { env } from "../../config/env.js";
-import { findUserByEmail, createUser } from "../users/user.repository.js";
+import { env } from "../../../config/env.js";
+import { findUserByEmail, createUser } from "../../users/user.repository.js";
 
 export const googleStrategy = new GoogleStrategy(
   {

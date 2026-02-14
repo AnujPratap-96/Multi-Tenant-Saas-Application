@@ -6,6 +6,9 @@ const getBaseOptions = () => ({
   sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
 });
 
+/**
+ * 🔐 Set Access + Refresh tokens
+ */
 export const setAuthCookies = (res, { accessToken, refreshToken }) => {
   const baseOptions = getBaseOptions();
 
@@ -20,6 +23,9 @@ export const setAuthCookies = (res, { accessToken, refreshToken }) => {
   });
 };
 
+/**
+ * 🆕 Signup temporary token cookie
+ */
 export const setSignupCookie = (res, token, name) => {
   res.cookie(name, token, {
     ...getBaseOptions(),
@@ -27,7 +33,22 @@ export const setSignupCookie = (res, token, name) => {
   });
 };
 
+/**
+ * 🔁 Password Reset temporary token cookie
+ */
+export const setPasswordResetCookie = (res, token, name) => {
+  res.cookie(name, token, {
+    ...getBaseOptions(),
+    maxAge: env.PASSWORD_RESET_TOKEN_COOKIE_MAX_AGE,
+  });
+};
+
+/**
+ * ❌ Clear Auth Cookies
+ */
 export const clearAuthCookies = (res) => {
   res.clearCookie("accessToken");
   res.clearCookie("refreshToken");
+  res.clearCookie("passwordResetToken");
+  res.clearCookie("signupToken");
 };

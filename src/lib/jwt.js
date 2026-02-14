@@ -14,3 +14,7 @@ export const generateAuthToken = async ({ userId = '', email }) => {
   const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES_IN });
   return { accessToken, refreshToken };
 }
+
+export const generatePasswordResetToken = async ({ email }) => {
+  return jwt.sign({ email }, env.JWT_PASSWORD_RESET_SECRET, { expiresIn: env.JWT_PASSWORD_RESET_EXPIRES_IN });
+}

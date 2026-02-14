@@ -1,8 +1,7 @@
 import { ApiError } from "../../../utils/api-error.js";
 import { env } from "../../../config/env.js";
-import sendEmail from "../../../lib/sendEmail.js";
 import { generateOtp } from "../utils/otp-geneator.js";
-import { otpTemplate } from "../../../templates/otp.template.js";
+import { sendOtpEmail } from "../utils/otp.email.js";
 import { findUserByEmail } from "../../users/user.repository.js";
 import { OTP_PURPOSE } from "../constants/auth.constants.js";
 
@@ -33,6 +32,13 @@ export const generateOtpService = async ({
     }
   }
 
+  if (purpose === OTP_PURPOSE.LOGIN || purpose === OTP_PURPOSE.FORGOT_PASSWORD) {
+    const existingUser = await findUserByEmail(email);
+    if (!existingUser) {
+      throw new ApiError(404, "User with this email does not exist");
+    }
+  }
+
   const existingOtp = await getOtp(requestId);
 
   // 🔁 If exists → resend
@@ -45,9 +51,7 @@ export const generateOtpService = async ({
   }
 
   // 🆕 Create new OTP
-  const { otp, combinedHash } =
-    generateOtp(env.OTP_LENGTH);
-
+  const { otp, combinedHash } = generateOtp(env.OTP_LENGTH, requestId);
   const now = Date.now();
   const ttl = Math.floor(env.OTP_EXPIRES_IN / 1000);
 
@@ -68,7 +72,6 @@ export const generateOtpService = async ({
     ttl,
   });
 
-  await sendEmail(email, otpTemplate(otp));
+  await sendOtpEmail(email, otp, purpose);
 
-  return { requestId };
 };

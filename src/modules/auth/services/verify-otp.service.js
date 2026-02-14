@@ -1,35 +1,32 @@
-// src/modules/auth/services/verify-otp.js
-
 import { ApiError } from "../../../utils/api-error.js";
 import { env } from "../../../config/env.js";
 import { OTP_MESSAGES } from "../constants/auth.constants.js";
-import { verifyOtpWithToken } from "../utils/otp-geneator.js";
-
-import {
-  getOtp,
-  updateOtp,
-  deleteOtp,
-} from "../redis/otp.redis.js";
-
+import { verifyOtp } from "../utils/otp-geneator.js";
+import { getOtp, updateOtp, deleteOtp } from "../redis/otp.redis.js";
 import { validateOtpState } from "../utils/otp-state.validator.js";
-import { handleOtpSuccess } from "../utils/otp-success.handler.js";
+
 
 export const verifyOtpService = async ({
   code,
   requestId,
+  purpose
 }) => {
   if (!requestId) {
     throw new ApiError(400, "RequestId is required");
   }
 
   const otpData = await getOtp(requestId);
+  if (!otpData) {
+    throw new ApiError(400, OTP_MESSAGES.EXPIRED);
+  }
 
   validateOtpState(otpData);
 
-  const isValid = await verifyOtpWithToken(
+  const isValid = verifyOtp(
     code,
     requestId,
-    otpData.codeHash
+    purpose,
+    otpData
   );
 
   if (!isValid) {
@@ -48,5 +45,10 @@ export const verifyOtpService = async ({
 
   await deleteOtp(requestId);
 
-  return handleOtpSuccess(otpData, otpData.purpose);
+  return {
+    isValid: true,
+    email: otpData.email,
+    purpose
+
+  }
 };

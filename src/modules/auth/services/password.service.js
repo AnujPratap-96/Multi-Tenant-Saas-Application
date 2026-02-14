@@ -2,13 +2,9 @@ js
 import { findUserByEmail } from "../../users/user.repository.js";
 import { invalidateUserSessions } from "../repositories/auth.repository.js";
 import { updateLastLogin } from "../../users/user.repository.js";
-
 import { PASSWORD_ACTION } from "../constants/auth.constants.js";
 import { validatePasswordAction } from "../utils/password.validator.js";
-import {
-  hashPassword,
-  executePasswordAction,
-} from "../utils/password.domain.js";
+import { hashPassword, executePasswordAction } from "../utils/password.domain.js";
 import { handlePasswordTokens } from "../utils/password.token.js";
 import { createPasswordAuditLog } from "../utils/password.audit.js";
 import { sendPasswordActionEmail } from "../utils/password.email.js";
@@ -16,7 +12,7 @@ import { sendPasswordActionEmail } from "../utils/password.email.js";
 export const passwordService = async ({
   email,
   password,
-  action = PASSWORD_ACTION.RESET_PASSWORD,
+  action = PASSWORD_ACTION.CHANGE_PASSWORD,
   ipAddress,
   userAgent,
   options = {},
@@ -25,7 +21,7 @@ export const passwordService = async ({
     generateTokens: true,
     createSession: true,
     sendEmail: true,
-    invalidateOldSessions: action === PASSWORD_ACTION.RESET_PASSWORD,
+    invalidateOldSessions: action === PASSWORD_ACTION.CHANGE_PASSWORD || action === PASSWORD_ACTION.FORGOT_PASSWORD,
     ...options,
   };
 
@@ -45,14 +41,17 @@ export const passwordService = async ({
   if (config.invalidateOldSessions && existingUser) {
     await invalidateUserSessions(user.id);
   }
+  const tokens = null;
+  if (!(action === PASSWORD_ACTION.FORGOT_PASSWORD)) {
 
-  const tokens = await handlePasswordTokens({
-    user,
-    generateTokens: config.generateTokens,
-    createSession: config.createSession,
-    ipAddress,
-    userAgent,
-  });
+      tokens = await handlePasswordTokens({
+      user,
+      generateTokens: config.generateTokens,
+      createSession: config.createSession,
+      ipAddress,
+      userAgent,
+    });
+  }
 
   if (tokens) {
     await updateLastLogin(user.id);

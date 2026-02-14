@@ -19,12 +19,15 @@ const envSchema = z
     JWT_ACCESS_SECRET: z.string().min(32),
     JWT_REFRESH_SECRET: z.string().min(32),
     JWT_SIGNUP_SECRET: z.string().min(32),
-    JWT_ACCESS_EXPIRES_IN: z.string(),   // e.g. 15m
+    JWT_PASSWORD_RESET_SECRET: z.string().min(32),
+    JWT_ACCESS_EXPIRES_IN: z.string(),   // e.g. 8h
     JWT_REFRESH_EXPIRES_IN: z.string(),  // e.g. 7d
     JWT_SIGNUP_EXPIRES_IN: z.string(),   // e.g. 10m
+    JWT_PASSWORD_RESET_EXPIRES_IN: z.string(),   // e.g. 15m
     SIGNUP_TOKEN_COOKIE_MAX_AGE: z.string().regex(/^\d+$/).transform(Number),
     ACCESS_TOKEN_COOKIE_MAX_AGE: z.string().regex(/^\d+$/).transform(Number),
     REFRESH_TOKEN_COOKIE_MAX_AGE: z.string().regex(/^\d+$/).transform(Number),
+    PASSWORD_RESET_TOKEN_COOKIE_MAX_AGE: z.string().regex(/^\d+$/).transform(Number),
     // OTP
     OTP_LENGTH: z.string().regex(/^\d+$/).transform(Number),
     OTP_EXPIRES_IN: z.string().regex(/^\d+$/).transform(Number), // seconds
@@ -44,7 +47,7 @@ const envSchema = z
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
     GOOGLE_CALLBACK_URL: z.string().min(1),
-    
+
   });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {

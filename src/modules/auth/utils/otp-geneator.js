@@ -1,24 +1,20 @@
 import crypto from 'crypto';
 
-export const generateOtp = (length = 6, tokenLength = 32) => {
+export const generateOtp = (length = 6, requestId) => {
   // Generate OTP
- 
+
   const otp = crypto.randomInt(
     10 ** (length - 1),
     10 ** length
   ).toString();
 
-  // Generate secure random token for the link
-  const token = crypto.randomBytes(tokenLength).toString('hex');
-
   // Create a combined hash of OTP + token for secure verification
   const combinedHash = crypto
     .createHash('sha256')
-    .update(otp + token)
+    .update(otp + requestId)
     .digest('hex');
-  return { 
+  return {
     otp,           // Send this via email
-    token,         // Include this in the verification link
     combinedHash   // Store this in database
   };
 };
@@ -26,11 +22,15 @@ export const generateOtp = (length = 6, tokenLength = 32) => {
 
 
 // Verification function
-export const verifyOtpWithToken = (inputOtp, inputToken, storedHash) => {
+export const verifyOtp = (inputOtp,requestId,purpose,otpData) => {
   const inputHash = crypto
     .createHash('sha256')
-    .update(inputOtp + inputToken)
+    .update(inputOtp + requestId)
     .digest('hex');
-  
-  return inputHash === storedHash;
+
+    if (purpose && otpData.purpose !== purpose) {
+      return false; // Purpose mismatch
+    }
+
+  return inputHash === otpData.codeHash;
 };

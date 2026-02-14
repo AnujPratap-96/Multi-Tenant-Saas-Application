@@ -38,29 +38,30 @@ export const welcomeTemplate = (userName = 'there') => ({
   `,
 });
 
-export const passwordSetTemplate = () => {
+export const passwordResetTemplate = () => {
   return `
   <div style="font-family: Arial, sans-serif; background-color: #f5f7fa; padding: 40px 0;">
     <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 30px;">
       
-      <h2 style="color: #222;">Password Successfully Set</h2>
+      <h2 style="color: #222;">Your Password Was Changed</h2>
 
       <p style="color: #555; font-size: 15px; line-height: 1.6;">
-        Your password has been successfully set for your account.
+        This is a confirmation that your account password was successfully updated.
       </p>
 
       <p style="color: #555; font-size: 15px; line-height: 1.6;">
-        You can now log in using your email and password.
+        If you made this change, no further action is required.
       </p>
 
-      <div style="margin-top: 30px; padding: 15px; background-color: #f0f4ff; border-radius: 6px;">
-        <p style="margin: 0; font-size: 14px; color: #333;">
-          If you did not perform this action, please contact our support team immediately.
+      <div style="margin-top: 25px; padding: 15px; background-color: #fff4f4; border-radius: 6px;">
+        <p style="margin: 0; font-size: 14px; color: #b00020;">
+          If you did NOT change your password, please secure your account immediately and contact our support team.
         </p>
       </div>
 
       <p style="margin-top: 40px; font-size: 12px; color: #999;">
-        This is an automated message. Please do not reply.
+        For security reasons, we never send passwords via email.  
+        This is an automated message — please do not reply.
       </p>
 
     </div>
@@ -68,29 +69,30 @@ export const passwordSetTemplate = () => {
   `;
 };
 
-export const passwordChangedTemplate = () => {
+
+export const forgotpasswordTemplate = () => {
   return `
   <div style="font-family: Arial, sans-serif; background-color: #f5f7fa; padding: 40px 0;">
     <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 30px;">
       
-      <h2 style="color: #222;">Your Password Has Been Changed</h2>
+      <h2 style="color: #222;">Your Password Has Been Reset</h2>
 
       <p style="color: #555; font-size: 15px; line-height: 1.6;">
-        We wanted to let you know that your account password was recently changed.
+        Your account password was successfully reset using the password recovery process.
       </p>
 
       <p style="color: #555; font-size: 15px; line-height: 1.6;">
-        If you made this change, no further action is required.
+        You can now log in using your new password.
       </p>
 
       <div style="margin-top: 25px; padding: 15px; background-color: #ffecec; border-radius: 6px;">
         <p style="margin: 0; font-size: 14px; color: #a00;">
-          If you did not change your password, please reset it immediately and contact support.
+          If you did not request this password reset, please secure your account immediately and contact support.
         </p>
       </div>
 
       <p style="margin-top: 40px; font-size: 12px; color: #999;">
-        For security reasons, we recommend keeping your password confidential and secure.
+        For security reasons, we never send passwords via email.
       </p>
 
       <p style="font-size: 12px; color: #999;">
