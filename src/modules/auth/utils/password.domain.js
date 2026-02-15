@@ -1,5 +1,5 @@
 
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { env } from "../../../config/env.js";
 import { createUser, updateUserPassword } from "../../users/user.repository.js";
 import { PASSWORD_ACTION } from "../constants/auth.constants.js";

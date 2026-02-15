@@ -4,6 +4,22 @@ import { redisClient } from "../../../config/redis.js";
 
 const buildKey = (requestId) => `otp:${requestId}`;
 
+const emailKeyWithPurpose = (email, purpose) => `otp:${purpose}:${email}`;
+
+export const saveRequestIdByEmailAndPurpose = async (email, purpose, requestId, ttl) => {
+  const key = emailKeyWithPurpose(email, purpose);
+  await redisClient.set(
+    key,
+    requestId,
+    { EX: ttl }
+  );
+}
+
+export const getOtpByEmailAndPurpose = async (email, purpose) => {
+  const key = emailKeyWithPurpose(email, purpose);
+  return await redisClient.get(key);
+}
+
 export const getOtp = async (requestId) => {
   const key = buildKey(requestId);
   const data = await redisClient.get(key);

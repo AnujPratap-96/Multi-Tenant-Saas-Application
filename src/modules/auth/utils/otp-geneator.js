@@ -22,15 +22,15 @@ export const generateOtp = (length = 6, requestId) => {
 
 
 // Verification function
-export const verifyOtp = (inputOtp,requestId,purpose,otpData) => {
+export const verifyOtp = (inputOtp, requestId, purpose, otpData) => {
   const inputHash = crypto
     .createHash('sha256')
     .update(inputOtp + requestId)
     .digest('hex');
-
-    if (purpose && otpData.purpose !== purpose) {
-      return false; // Purpose mismatch
-    }
+console.log(purpose, otpData.purpose);
+  if (purpose && otpData.purpose !== purpose) {
+    return false; // Purpose mismatch
+  }
 
   return inputHash === otpData.codeHash;
 };

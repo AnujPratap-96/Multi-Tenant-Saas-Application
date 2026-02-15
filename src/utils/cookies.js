@@ -26,8 +26,8 @@ export const setAuthCookies = (res, { accessToken, refreshToken }) => {
 /**
  * 🆕 Signup temporary token cookie
  */
-export const setSignupCookie = (res, token, name) => {
-  res.cookie(name, token, {
+export const setSignupCookie = (res, token) => {
+  res.cookie("signupToken", token, {
     ...getBaseOptions(),
     maxAge: env.SIGNUP_TOKEN_COOKIE_MAX_AGE,
   });

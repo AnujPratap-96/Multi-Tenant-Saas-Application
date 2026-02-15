@@ -6,11 +6,13 @@ import { findUserByEmail } from "../../users/user.repository.js";
 import { OTP_PURPOSE } from "../constants/auth.constants.js";
 
 import {
-  getOtp,
   saveOtp,
+  saveRequestIdByEmailAndPurpose,
+  getOtpByEmailAndPurpose,
+  getOtp,
 } from "../redis/otp.redis.js";
 
-import { handleOtpResendLogic } from "../utils/otp-resend-handler.js";
+import { handleOtpResendLogic } from "../utils/otp-resend.handler.js";
 
 export const generateOtpService = async ({
   email,
@@ -18,13 +20,13 @@ export const generateOtpService = async ({
   purpose = OTP_PURPOSE.SIGNUP,
 }) => {
   if (!email) {
+
     throw new ApiError(400, "Email is required");
   }
 
   if (!requestId) {
     throw new ApiError(400, "RequestId is required");
   }
-
   if (purpose === OTP_PURPOSE.SIGNUP) {
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
@@ -39,12 +41,12 @@ export const generateOtpService = async ({
     }
   }
 
-  const existingOtp = await getOtp(requestId);
-
-  // 🔁 If exists → resend
-  if (existingOtp) {
+  const existingOtpReuestID = await getOtpByEmailAndPurpose(email, purpose);
+  const existingOTP = await getOtp(existingOtpReuestID);
+console.log("Existing OTP:", existingOTP);
+  if (existingOTP) {
     return handleOtpResendLogic({
-      otpData: existingOtp,
+      otpData: existingOTP,
       requestId,
       email,
     });
@@ -71,6 +73,9 @@ export const generateOtpService = async ({
     data: otpData,
     ttl,
   });
+const otpdata = await getOtp(requestId);
+console.log("Saved OTP Data:", otpdata);
+  await saveRequestIdByEmailAndPurpose(email, purpose, requestId, ttl);
 
   await sendOtpEmail(email, otp, purpose);
 

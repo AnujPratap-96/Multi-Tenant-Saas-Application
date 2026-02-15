@@ -1,6 +1,6 @@
-import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { asyncHandler } from "../../../utils/async-handler.js";
 import { getRequestContext } from "../../../utils/requestContext.js";
-import { loginWithEmailPasswordService,loginWithOtpService } from "../services/login.service.js";
+import { loginWithEmailPasswordService, loginWithOtpService } from "../services/login.service.js";
 import { setAuthCookies } from "../../../utils/cookies.js";
 import { successResponse } from "../../../utils/response.js";
 import { googleLoginService } from "../services/google.service.js";
@@ -42,13 +42,13 @@ export const loginWithOtpController = asyncHandler(async (req, res) => {
 
 export const loginWithGoogleController = asyncHandler(async (req, res) => {
   const { ipAddress, userAgent } = getRequestContext(req);
-  const { accessToken, refreshToken } = await googleLoginService(req.user, ipAddress, userAgent);
+  const { accessToken, refreshToken, user } = await googleLoginService(req.user, ipAddress, userAgent);
 
   setAuthCookies(res, accessToken, refreshToken);
   return successResponse(res, {
     success: true,
     message: "Login successful",
-    data: req.user
+    data: user
   });
 
 });

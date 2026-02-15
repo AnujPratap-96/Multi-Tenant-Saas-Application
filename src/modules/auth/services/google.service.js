@@ -1,11 +1,11 @@
 import crypto from "crypto";
 import { env } from "../../../config/env.js";
-import { createAuthSession, generateAuthToken } from "../../../utils/auth.js";
-import { createAuditLog } from "../../../utils/auditLog.js";
-import { updateLastLogin } from "../../user/services/user.service.js";
+import { generateAuthToken } from "../../../lib/jwt.js";
+import { createAuditLog } from "../../audit-log/audit-log.repository.js";
+import { updateLastLogin } from "../../users/user.repository.js";
 import { ApiError } from "../../../utils/api-error.js";
-
-
+import { createAuthSession } from "../repositories/auth.repository.js";
+import { mapUserToResponse } from "../../users/utils/map-user-fields.js";
 export const googleLoginService = async (user, ipAddress, userAgent) => {
   if (!user || !user.isActive) {
     throw new ApiError(401, "Invalid credentials");
@@ -37,5 +37,6 @@ export const googleLoginService = async (user, ipAddress, userAgent) => {
     userAgent,
   });
 
-  return { accessToken, refreshToken };
+  const mappedUser = mapUserToResponse(user);
+  return { accessToken, refreshToken, user: mappedUser };
 };

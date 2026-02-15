@@ -1,6 +1,6 @@
 import { OTP_PURPOSE } from "../constants/auth.constants.js";
 import { verifyEmailOtpTemplate, forgotPasswordOtpTemplate, loginOtpTemplate } from "../../../templates/otp.template.js";
-import { sendEmail } from "./sendEmail.js";
+import  sendEmail  from "../../../lib/sendEmail.js";
 
 export const sendOtpEmail = async (email, otp, purpose) => {
     let emailPayload;

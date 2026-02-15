@@ -1,6 +1,6 @@
 // src/modules/auth/utils/password.email.js
 
-import { sendEmail } from "../../../services/email.service.js";
+import  sendEmail  from "../../../lib/sendEmail.js";
 import {
   welcomeTemplate,
   forgotpasswordTemplate,

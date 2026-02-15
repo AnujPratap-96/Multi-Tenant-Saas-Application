@@ -39,7 +39,7 @@ export const passwordController = asyncHandler(async (req, res) => {
 });
 
 
-const verifyForgotPasswordOtpController = asyncHandler(async (req, res) => {
+export const verifyForgotPasswordOtpController = asyncHandler(async (req, res) => {
     const { requestId, purpose } = req.query;
     const { otp } = req.body;
     const result = await verifyOtpService({

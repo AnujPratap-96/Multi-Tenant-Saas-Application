@@ -5,7 +5,6 @@ import { verifyOtp } from "../utils/otp-geneator.js";
 import { getOtp, updateOtp, deleteOtp } from "../redis/otp.redis.js";
 import { validateOtpState } from "../utils/otp-state.validator.js";
 
-
 export const verifyOtpService = async ({
   code,
   requestId,
@@ -16,7 +15,9 @@ export const verifyOtpService = async ({
   }
 
   const otpData = await getOtp(requestId);
+  console.log("OTP data retrieved:", otpData);
   if (!otpData) {
+  
     throw new ApiError(400, OTP_MESSAGES.EXPIRED);
   }
 
@@ -28,7 +29,7 @@ export const verifyOtpService = async ({
     purpose,
     otpData
   );
-
+console.log("OTP verification result:", isValid);
   if (!isValid) {
     otpData.attempts += 1;
 
@@ -44,11 +45,9 @@ export const verifyOtpService = async ({
   }
 
   await deleteOtp(requestId);
-
   return {
     isValid: true,
     email: otpData.email,
     purpose
-
   }
 };

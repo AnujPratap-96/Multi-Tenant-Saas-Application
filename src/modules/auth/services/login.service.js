@@ -1,13 +1,13 @@
 import { env } from "../../../config/env.js";
-import bcrypt from "bcrypt";
-import { ApiError } from "../../../utils/apiError.js";
+import bcrypt from "bcryptjs";
+import { ApiError } from "../../../utils/api-error.js";
 import { findUserByEmail , updateLastLogin } from "../../users/user.repository.js";
 import { generateAuthToken } from "../../../lib/jwt.js";
 import crypto from "crypto";
-import { createAuthSession } from "../auth.repository.js";
-import { createAuditLog } from "../../audit/audit.repository.js";
+import { createAuthSession } from "../repositories/auth.repository.js";
+import { createAuditLog } from "../../audit-log/audit-log.repository.js";
 import { verifyOtpService } from "./verify-otp.service.js";
-
+import { mapUserToResponse } from "../../users/utils/map-user-fields.js";
 
 export const loginWithEmailPasswordService = async (email, password, ipAddress, userAgent) => {
 
@@ -49,8 +49,8 @@ export const loginWithEmailPasswordService = async (email, password, ipAddress, 
         ipAddress,
         userAgent,
     });
-
-    return { accessToken, refreshToken , user };
+    const mappedUser = mapUserToResponse(user);
+    return { accessToken, refreshToken , user: mappedUser };
 };
 
 
@@ -97,6 +97,7 @@ export const loginWithOtpService = async (otp, ipAddress, userAgent, requestId, 
     ipAddress,
     userAgent,
   });
+  const mappedUser = mapUserToResponse(user);
 
-  return { accessToken, refreshToken , user };
+  return { accessToken, refreshToken , user: mappedUser };
 };

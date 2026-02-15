@@ -1,4 +1,3 @@
-js
 import { findUserByEmail } from "../../users/user.repository.js";
 import { invalidateUserSessions } from "../repositories/auth.repository.js";
 import { updateLastLogin } from "../../users/user.repository.js";

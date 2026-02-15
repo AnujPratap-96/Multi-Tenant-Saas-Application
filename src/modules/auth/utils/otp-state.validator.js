@@ -3,6 +3,7 @@ import { OTP_MESSAGES } from "../constants/auth.constants.js";
 
 export const validateOtpState = (otp) => {
   if (!otp) {
+    console.log("OTP data is null or undefined");
     throw new ApiError(400, OTP_MESSAGES.EXPIRED);
   }
 

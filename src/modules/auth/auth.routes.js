@@ -20,7 +20,7 @@ const router = Router();
 
 // otp-related routes
 router.post("/signup-otp", validate(signUpSchema), emailVerifactionOtpController);
-router.post("/login-otp", validate(loginSchema), loginOtpController);
+router.post("/login-otp", validate(signUpSchema), loginOtpController);
 router.post("/forgot-password-otp", validate(signUpSchema), forgotPasswordOtpController);
 router.post("/verify-otp-signup", validate(verifyOtpSchema), verifyOtpController);
 router.post("/verify-otp-forgot-password", validate(verifyOtpSchema),verifyForgotPasswordOtpController);

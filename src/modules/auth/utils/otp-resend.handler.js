@@ -4,9 +4,9 @@ import { ApiError } from "../../../utils/api-error.js";
 import { env } from "../../../config/env.js";
 import { OTP_MESSAGES } from "../constants/auth.constants.js";
 import { generateOtp } from "./otp-geneator.js";
-import { updateOtp } from "../redis/otp.redis.js";
+import { saveRequestIdByEmailAndPurpose, updateOtp, getOtp } from "../redis/otp.redis.js";
 import sendEmail from "../../../lib/sendEmail.js";
-import { otpTemplate } from "../../../templates/otp.template.js";
+import { verifyEmailOtpTemplate } from "../../../templates/otp.template.js";
 
 export const handleOtpResendLogic = async ({
   otpData,
@@ -25,8 +25,7 @@ export const handleOtpResendLogic = async ({
     throw new ApiError(429, OTP_MESSAGES.RESEND_COOLDOWN);
   }
 
-  const { otp, combinedHash } =
-    generateOtp(env.OTP_LENGTH);
+  const { otp, combinedHash } = generateOtp(env.OTP_LENGTH);
 
   otpData.codeHash = combinedHash;
   otpData.resendCount += 1;
@@ -40,8 +39,11 @@ export const handleOtpResendLogic = async ({
     data: otpData,
     ttl,
   });
+  const otpdata = await getOtp(requestId);
+  console.log("Updated OTP Data:", otpdata);
+  await saveRequestIdByEmailAndPurpose(email, otpData.purpose, requestId, ttl);
+  await sendEmail(email, verifyEmailOtpTemplate(otp));
 
-  await sendEmail(email, otpTemplate(otp));
 
   return { requestId };
 };

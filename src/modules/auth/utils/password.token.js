@@ -1,8 +1,8 @@
-/modules/auth/utils/password.tokens.js
+
 
 import crypto from "crypto";
 import { generateAuthToken } from "../../../lib/jwt.js";
-import { createAuthSession } from "../repositories/session.repo.js";
+import { createAuthSession } from "../repositories/auth.repository.js";
 import { env } from "../../../config/env.js";
 
 export const handlePasswordTokens = async ({
