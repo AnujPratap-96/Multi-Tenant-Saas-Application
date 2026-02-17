@@ -10,7 +10,8 @@ import { sendPasswordActionEmail } from "../utils/password.email.js";
 
 export const passwordService = async ({
   email,
-  password,
+  newPassword,
+  oldPassword = '',
   action = PASSWORD_ACTION.CHANGE_PASSWORD,
   ipAddress,
   userAgent,
@@ -20,30 +21,32 @@ export const passwordService = async ({
     generateTokens: true,
     createSession: true,
     sendEmail: true,
-    invalidateOldSessions: action === PASSWORD_ACTION.CHANGE_PASSWORD || action === PASSWORD_ACTION.FORGOT_PASSWORD,
+    invalidateOldSessions:
+      action === PASSWORD_ACTION.CHANGE_PASSWORD ||
+      action === PASSWORD_ACTION.FORGOT_PASSWORD,
     ...options,
   };
+  if (newPassword === oldPassword) {
+    throw new Error("New password cannot be the same as the old password");
+  }
 
   const existingUser = await findUserByEmail(email);
-
-  validatePasswordAction(action, existingUser);
-
-  const hashedPassword = await hashPassword(password);
-
+  validatePasswordAction({ action, existingUser, oldPassword });
+  const hashedPassword = await hashPassword(newPassword);
   const user = await executePasswordAction({
     action,
     email,
     hashedPassword,
     existingUser,
   });
-
   if (config.invalidateOldSessions && existingUser) {
     await invalidateUserSessions(user.id);
   }
-  const tokens = null;
-  if (!(action === PASSWORD_ACTION.FORGOT_PASSWORD)) {
 
-      tokens = await handlePasswordTokens({
+  let tokens = null;
+
+  if (!(action === PASSWORD_ACTION.FORGOT_PASSWORD)) {
+    tokens = await handlePasswordTokens({
       user,
       generateTokens: config.generateTokens,
       createSession: config.createSession,
@@ -51,11 +54,9 @@ export const passwordService = async ({
       userAgent,
     });
   }
-
   if (tokens) {
     await updateLastLogin(user.id);
   }
-
   await createPasswordAuditLog({
     action,
     user,
@@ -65,8 +66,8 @@ export const passwordService = async ({
 
   if (config.sendEmail) {
     await sendPasswordActionEmail(action, email);
-  }
 
+  }
   return {
     success: true,
     user: {
@@ -77,3 +78,4 @@ export const passwordService = async ({
     message: "Password action completed successfully",
   };
 };
+

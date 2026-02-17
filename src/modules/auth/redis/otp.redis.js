@@ -58,3 +58,9 @@ export const deleteOtp = async (requestId) => {
   const key = buildKey(requestId);
   await redisClient.del(key);
 };
+
+
+export const deleteOtpByEmailAndPurpose = async (email, purpose) => {
+  const key = emailKeyWithPurpose(email, purpose);
+  await redisClient.del(key);
+}

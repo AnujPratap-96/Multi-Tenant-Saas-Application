@@ -43,7 +43,7 @@ export const generateOtpService = async ({
 
   const existingOtpReuestID = await getOtpByEmailAndPurpose(email, purpose);
   const existingOTP = await getOtp(existingOtpReuestID);
-console.log("Existing OTP:", existingOTP);
+
   if (existingOTP) {
     return handleOtpResendLogic({
       otpData: existingOTP,
@@ -73,8 +73,8 @@ console.log("Existing OTP:", existingOTP);
     data: otpData,
     ttl,
   });
-const otpdata = await getOtp(requestId);
-console.log("Saved OTP Data:", otpdata);
+  const otpdata = await getOtp(requestId);
+
   await saveRequestIdByEmailAndPurpose(email, purpose, requestId, ttl);
 
   await sendOtpEmail(email, otp, purpose);

@@ -1,4 +1,3 @@
-
 import bcrypt from "bcryptjs";
 import { env } from "../../../config/env.js";
 import { createUser, updateUserPassword } from "../../users/user.repository.js";
@@ -8,6 +7,10 @@ export const hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(env.BCRYPT_SALT_ROUNDS);
   return bcrypt.hash(password, salt);
 };
+
+export const comparePassword = async (password, hashedPassword) => {
+  return bcrypt.compare(password, hashedPassword);
+}
 
 export const executePasswordAction = async ({
   action,

@@ -15,6 +15,6 @@ export const generateAuthToken = async ({ userId = '', email }) => {
   return { accessToken, refreshToken };
 }
 
-export const generatePasswordResetToken = async ({ email }) => {
-  return jwt.sign({ email }, env.JWT_PASSWORD_RESET_SECRET, { expiresIn: env.JWT_PASSWORD_RESET_EXPIRES_IN });
+export const generatePasswordResetToken = async ({ email , purpose }) => {
+  return jwt.sign({ email, purpose }, env.JWT_PASSWORD_RESET_SECRET, { expiresIn: env.JWT_PASSWORD_RESET_EXPIRES_IN });
 }

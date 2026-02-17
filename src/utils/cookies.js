@@ -36,8 +36,8 @@ export const setSignupCookie = (res, token) => {
 /**
  * 🔁 Password Reset temporary token cookie
  */
-export const setPasswordResetCookie = (res, token, name) => {
-  res.cookie(name, token, {
+export const setPasswordResetCookie = (res, token) => {
+  res.cookie("passwordResetToken", token, {
     ...getBaseOptions(),
     maxAge: env.PASSWORD_RESET_TOKEN_COOKIE_MAX_AGE,
   });

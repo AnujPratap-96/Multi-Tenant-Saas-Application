@@ -2,7 +2,7 @@ import { ApiError } from "../../../utils/api-error.js";
 import { env } from "../../../config/env.js";
 import { OTP_MESSAGES } from "../constants/auth.constants.js";
 import { verifyOtp } from "../utils/otp-geneator.js";
-import { getOtp, updateOtp, deleteOtp } from "../redis/otp.redis.js";
+import { getOtp, updateOtp, deleteOtp , deleteOtpByEmailAndPurpose} from "../redis/otp.redis.js";
 import { validateOtpState } from "../utils/otp-state.validator.js";
 
 export const verifyOtpService = async ({
@@ -15,7 +15,7 @@ export const verifyOtpService = async ({
   }
 
   const otpData = await getOtp(requestId);
-  console.log("OTP data retrieved:", otpData);
+
   if (!otpData) {
   
     throw new ApiError(400, OTP_MESSAGES.EXPIRED);
@@ -29,7 +29,7 @@ export const verifyOtpService = async ({
     purpose,
     otpData
   );
-console.log("OTP verification result:", isValid);
+
   if (!isValid) {
     otpData.attempts += 1;
 
@@ -45,6 +45,8 @@ console.log("OTP verification result:", isValid);
   }
 
   await deleteOtp(requestId);
+  await deleteOtpByEmailAndPurpose(otpData.email, otpData.purpose);
+
   return {
     isValid: true,
     email: otpData.email,

@@ -40,7 +40,7 @@ export const handleOtpResendLogic = async ({
     ttl,
   });
   const otpdata = await getOtp(requestId);
-  console.log("Updated OTP Data:", otpdata);
+
   await saveRequestIdByEmailAndPurpose(email, otpData.purpose, requestId, ttl);
   await sendEmail(email, verifyEmailOtpTemplate(otp));
 

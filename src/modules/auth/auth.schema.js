@@ -4,7 +4,7 @@ import { requestSchema } from "../../schemas/request.schema.js";
 
 export const signUpSchema = requestSchema({
   body: z.object({
-     email: z.string().trim().toLowerCase().email(),
+    email: z.string().trim().toLowerCase().email(),
   }),
 });
 
@@ -18,7 +18,14 @@ export const verifyOtpSchema = requestSchema({
 
 export const setPasswordSchema = requestSchema({
   body: z.object({
-   password : z.string().min(8).max(128),
+    password: z.string().min(8).max(128),
+  }),
+});
+
+export const changePasswordSchema = requestSchema({
+  body: z.object({
+    old_password: z.string().min(8).max(128),
+    new_password: z.string().min(8).max(128),
   }),
 });
 

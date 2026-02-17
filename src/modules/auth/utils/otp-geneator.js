@@ -27,7 +27,7 @@ export const verifyOtp = (inputOtp, requestId, purpose, otpData) => {
     .createHash('sha256')
     .update(inputOtp + requestId)
     .digest('hex');
-console.log(purpose, otpData.purpose);
+
   if (purpose && otpData.purpose !== purpose) {
     return false; // Purpose mismatch
   }

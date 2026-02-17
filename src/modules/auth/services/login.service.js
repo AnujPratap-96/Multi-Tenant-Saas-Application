@@ -91,7 +91,7 @@ export const loginWithOtpService = async (otp, ipAddress, userAgent, requestId, 
 
   await createAuditLog({
     userId: user.id,
-    action: "LOGIN_WITH_OTP",
+    action: "LOGIN",
     entityType: "USER",
     entityId: user.id,
     ipAddress,

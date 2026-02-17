@@ -9,12 +9,15 @@ export const verifySignupToken = asyncHandler(async (req, res, next) => {
     if (!token) {
         throw new ApiError(401, "Signup token missing");
     }
+   
     const payload = jwt.verify(token, env.JWT_SIGNUP_SECRET);
     if (payload.purpose !== OTP_PURPOSE.SIGNUP) {
         throw new ApiError(401, "Invalid signup token");
     }
     req.email = payload.email;
+  
     req.action = payload.purpose;
+
     next();
 });
 
@@ -39,6 +42,7 @@ export const requireAccessToken = asyncHandler(async (req, res, next) => {
     }
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
     req.userId = payload.userId;
+    req.email = payload.email;
     next();
 
 });
