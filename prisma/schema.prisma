@@ -32,52 +32,54 @@ enum TaskPriority {
 // USERS (GLOBAL IDENTITY)
 //////////////////////
 model User {
-  id                 String            @id @default(uuid())
-  email              String            @unique
-  password           String
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  password              String
   // 👤 Identity
-  firstName          String?
-  lastName           String?
-  avatarUrl          String?
-  emailVerified      Boolean           @default(false)
-  isActive           Boolean           @default(true)
-  lastLoginAt        DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  deletedAt          DateTime?
-  ownedTenants       Tenant[]          @relation("TenantOwner")
-  tenantUsers        TenantUser[]
-  projectMembers     ProjectMember[]
-  projects           Project[]         @relation("ProjectCreator")
-  tasksCreated       Task[]            @relation("TaskCreator")
-  taskAssignees      TaskAssignee[]
-  comments           TaskComment[]
-  auditLogsAsActor   AuditLog[]        @relation("AuditActor")
-  auditLogsAsSubject AuditLog[]        @relation("AuditSubject")
-  tasksUpdated       Task[]            @relation("TaskUpdater")
-  tenantInvitations  TenantUser[]      @relation("TenantUserInviter")
-  tenantOwnerships   TenantOwnership[]
-  sessions           AuthSession[]
+  firstName             String?
+  lastName              String?
+  avatarUrl             String?
+  emailVerified         Boolean                @default(false)
+  isActive              Boolean                @default(true)
+  lastLoginAt           DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+  ownedTenants          Tenant[]               @relation("TenantOwner")
+  tenantUsers           TenantUser[]
+  projectMembers        ProjectMember[]
+  projects              Project[]              @relation("ProjectCreator")
+  tasksCreated          Task[]                 @relation("TaskCreator")
+  taskAssignees         TaskAssignee[]
+  comments              TaskComment[]
+  auditLogsAsActor      AuditLog[]             @relation("AuditActor")
+  auditLogsAsSubject    AuditLog[]             @relation("AuditSubject")
+  tasksUpdated          Task[]                 @relation("TaskUpdater")
+  tenantUserPermissions TenantUserPermission[]
+  tenantInvitations     TenantUser[]           @relation("TenantUserInviter")
+  tenantOwnerships      TenantOwnership[]
+  sessions              AuthSession[]
 }
 
 //////////////////////
 // TENANTS (ORGANIZATION)
 //////////////////////
 model Tenant {
-  id               String            @id @default(uuid())
-  name             String
-  ownerUserId      String
-  owner            User              @relation("TenantOwner", fields: [ownerUserId], references: [id])
-  plan             String            @default("FREE")
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  deletedAt        DateTime?
-  tenantUsers      TenantUser[]
-  projects         Project[]
-  tasks            Task[]
-  auditLogs        AuditLog[]
-  tenantOwnerships TenantOwnership[]
+  id                    String                 @id @default(uuid())
+  name                  String
+  ownerUserId           String
+  owner                 User                   @relation("TenantOwner", fields: [ownerUserId], references: [id])
+  plan                  String                 @default("FREE")
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+  tenantUsers           TenantUser[]
+  projects              Project[]
+  tasks                 Task[]
+  auditLogs             AuditLog[]
+  tenantOwnerships      TenantOwnership[]
+  tenantUserPermissions TenantUserPermission[]
 }
 
 model TenantOwnership {
@@ -277,4 +279,50 @@ model AuthSession {
 
   @@index([userId])
   @@index([isRevoked])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  resource    String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions       RolePermission[]
+  tenantUserPermissions TenantUserPermission[]
+
+  @@unique([resource, action]) // ADD THIS
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  role         Role
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([role, permissionId])
+}
+
+model TenantUserPermission {
+  tenantId     String
+  userId       String
+  permissionId String
+
+  // Optional but very useful later
+  isAllowed Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  permission Permission @relation(fields: [permissionId], references: [id])
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@id([tenantId, userId, permissionId])
+  @@index([tenantId, userId])
+  @@index([tenantId, permissionId])
 }
