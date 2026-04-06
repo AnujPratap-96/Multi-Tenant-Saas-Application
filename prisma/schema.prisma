@@ -67,6 +67,7 @@ model User {
 model Tenant {
   id                    String                 @id @default(uuid())
   name                  String
+  slug                  String                 @unique
   ownerUserId           String
   owner                 User                   @relation("TenantOwner", fields: [ownerUserId], references: [id])
   plan                  String                 @default("FREE")

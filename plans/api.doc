@@ -1,0 +1,51 @@
+## **Create Tenant API Checklist**
+
+* [ ] validate request body
+* [ ] check ownerId exists
+* [ ] check owner is active
+* [ ] normalize tenant name
+* [ ] check same tenant name exists or not
+* [ ] start transaction
+* [ ] create tenant
+* [ ] create tenantUser entry
+* [ ] create tenantOwnership entry
+* [ ] commit transaction
+* [ ] create audit log
+* [ ] return tenant response
+
+---
+
+# **List Tenants API Checklist**
+
+* [ ] validate query params
+* [ ] apply page/limit defaults
+* [ ] calculate skip
+* [ ] filter only current user tenants
+* [ ] exclude removed memberships
+* [ ] apply search filter
+* [ ] apply active filter
+* [ ] fetch tenants
+* [ ] fetch total count
+* [ ] include owner details
+* [ ] include membership role/status
+* [ ] flatten role + membershipStatus
+* [ ] calculate totalPages
+* [ ] return paginated response
+
+---
+
+# **Get My Tenants API Checklist**
+
+* [ ] validate authenticated user
+* [ ] extract current user id from auth
+* [ ] fetch all tenant memberships for current user
+* [ ] exclude memberships with status `REMOVED`
+* [ ] include tenant details
+* [ ] include tenant owner details
+* [ ] sort by latest joined tenants first
+* [ ] optionally flatten response if needed
+* [ ] return user tenant list
+
+---
+
+

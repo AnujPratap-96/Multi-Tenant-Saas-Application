@@ -9,6 +9,10 @@ import requestLogger from "./middlewares/requestLogger.middleware.js";
 import { API_PREFIX } from "./config/version.js";
 import { env } from "./config/env.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import tenantRoutes from "./modules/tenant/routes/tenant.routes.js";
+import tenantMembershipRoutes from "./modules/tenant/routes/tenant-membership.routes.js";
+import tenantInviteRoutes from "./modules/tenant/routes/tenant-invite.routes.js";
+import tenantSettingsRoutes from "./modules/tenant/routes/tenant-settings.routes.js";
 import passport from "./lib/passport.js";
 
 
@@ -52,6 +56,10 @@ app.use(passport.initialize());
 
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
+app.use(`${API_PREFIX}/tenants`, tenantRoutes);
+app.use(`${API_PREFIX}/tenants`, tenantMembershipRoutes);
+app.use(`${API_PREFIX}/tenants`, tenantInviteRoutes);
+app.use(`${API_PREFIX}/tenants`, tenantSettingsRoutes);
 
 
 app.use(errorMiddleware);

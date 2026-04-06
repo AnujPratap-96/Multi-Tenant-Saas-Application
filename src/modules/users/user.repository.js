@@ -21,6 +21,16 @@ export const createUser = async ({
   });
 };
 
+export const findActiveUserById = async (id) => {
+  return await prisma.user.findFirst({
+    where: {
+      id,
+      isActive: true,
+      deletedAt: null,
+    },
+  });
+};
+
 /**
  * Update user's password
  */
