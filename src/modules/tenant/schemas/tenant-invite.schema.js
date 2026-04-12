@@ -1,6 +1,6 @@
 // Tenant invite schema validation
 import { z } from "zod";
-import { requestSchema } from "../../schemas/request.schema.js";
+import {requestSchema} from "../../../schemas/request.schema.js";
 import { TENANT_ROLES, INVITE_EXPIRY_DAYS } from "../constants/tenant.constants.js";
 
 // Create invite schema

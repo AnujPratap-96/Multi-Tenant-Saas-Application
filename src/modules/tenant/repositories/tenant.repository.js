@@ -1,5 +1,5 @@
 // Tenant repository - Database operations for tenants
-import { prisma } from "../../../lib/prisma.js";
+import prisma from "../../../lib/prisma.js";
 
 
 /**

@@ -1,6 +1,6 @@
 // Tenant membership service - Business logic for membership operations
 import { ApiError } from "../../../utils/api-error.js";
-import { prisma } from "../../../lib/prisma.js";
+import prisma from "../../../lib/prisma.js";
 import { logAudit } from "../../../lib/audit.logger.js";
 import * as tenantRepository from "../repositories/tenant.repository.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";

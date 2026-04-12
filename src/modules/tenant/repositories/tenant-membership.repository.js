@@ -1,5 +1,5 @@
 // Tenant membership repository - Database operations for tenant members
-import { prisma } from "../../../lib/prisma.js";
+import prisma from "../../../lib/prisma.js";
 
 /**
  * Add a member to a tenant

@@ -1,6 +1,6 @@
 // Tenant settings schema validation
 import { z } from "zod";
-import { requestSchema } from "../../schemas/request.schema.js";
+import {requestSchema} from "../../../schemas/request.schema.js";
 
 // Update settings schema
 export const updateSettingsSchema = requestSchema({

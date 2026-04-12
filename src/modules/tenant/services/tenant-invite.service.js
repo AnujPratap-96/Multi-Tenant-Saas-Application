@@ -1,7 +1,7 @@
 // Tenant invite service - Business logic for invite operations
 import { randomBytes } from "crypto";
 import { ApiError } from "../../../utils/api-error.js";
-import { prisma } from "../../../lib/prisma.js";
+import prisma from "../../../lib/prisma.js";
 import { logAudit } from "../../../lib/audit.logger.js";
 import * as tenantRepository from "../repositories/tenant.repository.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";

@@ -1,6 +1,6 @@
 // Tenant schema validation
 import { z } from "zod";
-import { requestSchema } from "../../schemas/request.schema.js";
+import {requestSchema} from "../../../schemas/request.schema.js";
 import { TENANT_PLANS, MIN_TENANT_NAME_LENGTH, MAX_TENANT_NAME_LENGTH } from "../constants/tenant.constants.js";
 
 // Create tenant schema

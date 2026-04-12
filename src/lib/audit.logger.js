@@ -1,4 +1,4 @@
-import { prisma } from "../../config/prisma.js";
+import  prisma  from "./prisma.js"
 export const logAudit = async ({
   action,
   entityType,
@@ -30,3 +30,4 @@ export const logAudit = async ({
     console.error("Audit log failed:", err);
   }
 };
+

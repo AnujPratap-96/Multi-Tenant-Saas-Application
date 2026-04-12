@@ -1,6 +1,6 @@
 // Tenant membership schema validation
 import { z } from "zod";
-import { requestSchema } from "../../schemas/request.schema.js";
+import {requestSchema} from "../../../schemas/request.schema.js";
 import { TENANT_ROLES } from "../constants/tenant.constants.js";
 
 // Add member schema

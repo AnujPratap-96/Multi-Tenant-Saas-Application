@@ -1,5 +1,5 @@
 // Tenant invite repository - Database operations for tenant invites
-import { prisma } from "../../../lib/prisma.js";
+import prisma from "../../../lib/prisma.js";
 import { redisClient } from "../../../config/redis.js";
 import { INVITE_EXPIRY_DAYS } from "../constants/tenant.constants.js";
 
