@@ -3,6 +3,7 @@ import { asyncHandler } from "../../../utils/async-handler.js";
 import { ApiError } from "../../../utils/api-error.js";
 import * as tenantRepository from "../repositories/tenant.repository.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";
+import * as tenantRedis from "../redis/tenant.redis.js";
 
 /**
  * Resolve tenant from request header and attach to request
@@ -16,17 +17,26 @@ export const resolveTenant = asyncHandler(async (req, res, next) => {
     return next();
   }
   
-  // Verify tenant exists and is active
-  const tenant = await tenantRepository.findActiveTenantById(tenantId);
+  // Verify tenant exists and is active (Check Cache first)
+  let tenant = await tenantRedis.getCachedTenant(tenantId);
   if (!tenant) {
-    throw new ApiError(404, "Tenant not found or inactive");
+    tenant = await tenantRepository.findActiveTenantById(tenantId);
+    if (!tenant) {
+      throw new ApiError(404, "Tenant not found or inactive");
+    }
+    await tenantRedis.setCachedTenant(tenantId, tenant);
   }
   
   // If user is authenticated, verify membership
   if (req.userId) {
-    const membership = await membershipRepository.findMembership(tenantId, req.userId);
+    let membership = await tenantRedis.getCachedMembership(tenantId, req.userId);
+    
     if (!membership) {
-      throw new ApiError(403, "You are not a member of this tenant");
+      membership = await membershipRepository.findMembership(tenantId, req.userId);
+      if (!membership) {
+        throw new ApiError(403, "You are not a member of this tenant");
+      }
+      await tenantRedis.setCachedMembership(tenantId, req.userId, membership);
     }
     
     if (membership.status === 'SUSPENDED') {

@@ -37,3 +37,28 @@ export const invalidateUserSessions = async (userId) => {
     },
   });
 };
+
+export const findSessionByHash = async (refreshTokenHash) => {
+  return prisma.authSession.findFirst({
+    where: {
+      refreshTokenHash,
+      isRevoked: false,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    include: {
+      user: true,
+    },
+  });
+};
+
+export const revokeSession = async (sessionId) => {
+  return prisma.authSession.update({
+    where: { id: sessionId },
+    data: {
+      isRevoked: true,
+      revokedAt: new Date(),
+    },
+  });
+};

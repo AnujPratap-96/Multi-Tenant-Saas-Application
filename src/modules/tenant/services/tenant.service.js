@@ -6,6 +6,7 @@ import * as User from "../../users/user.repository.js";
 import * as tenantHelper from "../utils/tenant-helper.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";
 import { DEFAULT_TENANT_PLAN, TENANT_AUDIT_ACTIONS, TENANT_USER_STATUS } from "../constants/tenant.constants.js";
+import * as tenantRedis from "../redis/tenant.redis.js";
 
 /**
  * Create a new tenant
@@ -65,9 +66,17 @@ export const getTenant = async (tenantId, userId) => {
     throw new ApiError(403, "You are not a member of this tenant");
   }
 
-  const tenant = await tenantRepository.findActiveTenantById(tenantId);
+  // Try to get from cache
+  const cachedTenant = await tenantRedis.getCachedTenant(tenantId);
+  let tenant = cachedTenant;
+
   if (!tenant) {
-    throw new ApiError(404, "Tenant not found");
+    tenant = await tenantRepository.findActiveTenantById(tenantId);
+    if (!tenant) {
+      throw new ApiError(404, "Tenant not found");
+    }
+    // Save to cache
+    await tenantRedis.setCachedTenant(tenantId, tenant);
   }
 
   return {
@@ -102,6 +111,9 @@ export const updateTenant = async (tenantId, data, userId, req) => {
   }
 
   const tenant = await tenantRepository.updateTenant(tenantId, data);
+
+  // Invalidate cache
+  await tenantRedis.invalidateTenantCache(tenantId);
 
   // Log audit
   await logAudit({
@@ -142,6 +154,10 @@ export const deleteTenant = async (tenantId, userId, req) => {
   }
 
   const deletedTenant = await tenantRepository.softDeleteTenant(tenantId);
+
+  // Invalidate cache
+  await tenantRedis.invalidateTenantCache(tenantId);
+  await tenantRedis.invalidateAllTenantMemberships(tenantId);
 
   // Log audit
   await logAudit({

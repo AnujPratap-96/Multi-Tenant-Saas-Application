@@ -8,7 +8,9 @@ import { verifyOtpController } from "./controllers/otp.controller.js";
 import { emailVerifactionOtpController, loginOtpController, forgotPasswordOtpController } from "./controllers/request-otps.controller.js";
 import {passwordController, verifyForgotPasswordOtpController, changePasswordController} from "./controllers/password.controller.js";
 import {loginWithOtpController , loginWithGoogleController , loginWithEmailAndPasswordController , logoutController} from "./controllers/login.controller.js";
+import { refreshTokensController } from "./controllers/session.controller.js";
 const router = Router();
+
 
 // otp-related routes
 router.post("/signup-otp", validate(signUpSchema), emailVerifactionOtpController);
@@ -24,10 +26,40 @@ router.post("/set-password", verifySignupToken, validate(setPasswordSchema), pas
 router.post("/change-password", requireAccessToken, validate(changePasswordSchema), changePasswordController);
 router.post("/forgot-password", verifyPasswordResetToken, validate(setPasswordSchema), passwordController);
 
-// login-related routes
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login with email and password
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Login'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ */
 router.post("/login" , validate(loginSchema), loginWithEmailAndPasswordController);
 router.post("/login-otp", validate(loginSchema), loginWithOtpController);
+
+/**
+ * @swagger
+ * /auth/refresh-token:
+ *   post:
+ *     summary: Refresh authentication tokens
+ *     description: Rotates the refresh token and issues a new access token.
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Tokens refreshed successfully
+ */
+router.post("/refresh-token", refreshTokensController);
+
 router.get(
+
   "/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
