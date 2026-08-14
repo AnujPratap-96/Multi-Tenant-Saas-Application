@@ -34,7 +34,7 @@ enum TaskPriority {
 model User {
   id                    String                 @id @default(uuid())
   email                 String                 @unique
-  password              String
+  password              String?
   // 👤 Identity
   firstName             String?
   lastName              String?
@@ -59,6 +59,7 @@ model User {
   tenantInvitations     TenantUser[]           @relation("TenantUserInviter")
   tenantOwnerships      TenantOwnership[]
   sessions              AuthSession[]
+  tenantInvitesSent     TenantInvite[]         @relation("TenantInviteInviter")
 }
 
 //////////////////////
@@ -81,6 +82,8 @@ model Tenant {
   auditLogs             AuditLog[]
   tenantOwnerships      TenantOwnership[]
   tenantUserPermissions TenantUserPermission[]
+  tenantInvites         TenantInvite[]
+  settings              TenantSettings?
 }
 
 model TenantOwnership {
@@ -117,6 +120,44 @@ enum TenantUserStatus {
   ACTIVE
   SUSPENDED
   REMOVED
+}
+
+//////////////////////
+// TENANT INVITES (EMAIL-KEYED, D-7)
+//////////////////////
+model TenantInvite {
+  id          String             @id @default(uuid())
+  tenantId    String
+  email       String
+  role        Role
+  invitedById String?
+  invitedBy   User?              @relation("TenantInviteInviter", fields: [invitedById], references: [id])
+  tokenHash   String
+  status      TenantInviteStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime           @default(now())
+  acceptedAt  DateTime?
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, email])
+  @@index([email])
+}
+
+enum TenantInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+//////////////////////
+// TENANT SETTINGS (DB-BACKED, D-14)
+//////////////////////
+model TenantSettings {
+  tenantId  String   @id
+  settings  Json     @default("{}")
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 //////////////////////
@@ -238,6 +279,8 @@ model AuditLog {
   @@index([actorUserId])
   @@index([subjectUserId])
   @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([tenantId, createdAt])
 }
 
 enum AuditAction {
@@ -252,6 +295,37 @@ enum AuditAction {
   PASSWORD_CHANGE
   PASSWORD_SET
   ROLE_CHANGE
+
+  // Tenant
+  ADD_MEMBER
+  REMOVE_MEMBER
+  SUSPEND_MEMBER
+  RESTORE_MEMBER
+  SWITCH_TENANT
+  RESTORE
+  INVITE_ACCEPTED
+  INVITE_REJECTED
+  INVITE_CANCELLED
+  INVITE_RESENT
+
+  // Project
+  PROJECT_CREATE
+  PROJECT_UPDATE
+  PROJECT_DELETE
+  PROJECT_ARCHIVE
+  PROJECT_MEMBER_ADD
+  PROJECT_MEMBER_REMOVE
+  PROJECT_MEMBER_UPDATE
+
+  // Task
+  TASK_CREATE
+  TASK_UPDATE
+  TASK_DELETE
+  TASK_STATUS_CHANGE
+  TASK_ASSIGNEE_ADD
+  TASK_ASSIGNEE_REMOVE
+  TASK_COMMENT_ADD
+  TASK_COMMENT_DELETE
 }
 
 enum AuditEntity {
@@ -280,6 +354,7 @@ model AuthSession {
 
   @@index([userId])
   @@index([isRevoked])
+  @@unique([refreshTokenHash])
 }
 
 model Permission {
@@ -297,15 +372,29 @@ model Permission {
   @@unique([resource, action]) // ADD THIS
 }
 
+model RoleDefinition {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@map("Roles")
+}
+
 model RolePermission {
   id           String   @id @default(uuid())
-  role         Role
+  roleId       String
   permissionId String
   createdAt    DateTime @default(now())
 
+  role       RoleDefinition       @relation(fields: [roleId], references: [id])
   permission Permission @relation(fields: [permissionId], references: [id])
 
-  @@unique([role, permissionId])
+  @@unique([roleId, permissionId])
 }
 
 model TenantUserPermission {

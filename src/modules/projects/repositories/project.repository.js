@@ -117,11 +117,18 @@ export const softDeleteProject = async (id) => {
 };
 
 /**
- * Add member to project
+ * Add member to project (B-21: upsert so re-adding a removed member reactivates)
  */
 export const addProjectMember = async (projectId, userId, role = 'MEMBER') => {
-  return await prisma.projectMember.create({
-    data: {
+  return await prisma.projectMember.upsert({
+    where: {
+      projectId_userId: { projectId, userId },
+    },
+    update: {
+      role,
+      removedAt: null,
+    },
+    create: {
       projectId,
       userId,
       role,
@@ -130,12 +137,15 @@ export const addProjectMember = async (projectId, userId, role = 'MEMBER') => {
 };
 
 /**
- * Remove member from project
+ * Remove member from project (soft delete via removedAt)
  */
 export const removeProjectMember = async (projectId, userId) => {
-  return await prisma.projectMember.delete({
+  return await prisma.projectMember.update({
     where: {
       projectId_userId: { projectId, userId },
+    },
+    data: {
+      removedAt: new Date(),
     },
   });
 };
@@ -149,4 +159,42 @@ export const getProjectMembership = async (projectId, userId) => {
       projectId_userId: { projectId, userId },
     },
   });
+};
+
+/**
+ * Update project member role
+ */
+export const updateProjectMemberRole = async (projectId, userId, role) => {
+  return await prisma.projectMember.update({
+    where: { projectId_userId: { projectId, userId } },
+    data: { role },
+    include: {
+      user: {
+        select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true },
+      },
+    },
+  });
+};
+
+/**
+ * Get project dashboard stats
+ */
+export const getProjectDashboardStats = async (projectId, tenantId) => {
+  const [memberCount, taskCounts] = await Promise.all([
+    prisma.projectMember.count({ where: { projectId, removedAt: null } }),
+    prisma.task.groupBy({
+      by: ['status'],
+      where: { projectId, tenantId, deletedAt: null },
+      _count: { id: true },
+    }),
+  ]);
+
+  const taskStats = { TODO: 0, IN_PROGRESS: 0, DONE: 0 };
+  taskCounts.forEach((t) => { taskStats[t.status] = t._count.id; });
+
+  return {
+    memberCount,
+    taskStats,
+    totalTasks: Object.values(taskStats).reduce((a, b) => a + b, 0),
+  };
 };

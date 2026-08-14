@@ -32,7 +32,6 @@ export const saveOtp = async ({
   ttl,
 }) => {
   const key = buildKey(requestId);
-
   await redisClient.set(
     key,
     JSON.stringify(data),

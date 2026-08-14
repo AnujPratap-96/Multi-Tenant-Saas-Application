@@ -15,7 +15,7 @@ export const validate = (schema) => (req, res, next) => {
       },
       "Validation failed"
     );
-    throw new ApiError(422, "Validation error", result.error.flatten());
+    throw new ApiError(400, "Validation error", result.error.flatten());
   }
   req.validated = result.data; // ✅ safe, parsed data
   next();

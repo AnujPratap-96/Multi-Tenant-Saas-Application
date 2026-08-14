@@ -18,6 +18,7 @@ import projectRoutes from "./modules/projects/routes/project.routes.js";
 import rbacRoutes from "./modules/rbac/routes/rbac.routes.js";
 import taskRoutes from "./modules/tasks/routes/task.routes.js";
 import userRoutes from "./modules/users/user.routes.js";
+import dashboardRoutes from "./modules/dashboard/routes/dashboard.routes.js";
 import passport from "./lib/passport.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
@@ -30,6 +31,7 @@ import { successResponse } from "./utils/response.js";
 const app = express();
 
 
+
 app.use((req, res, next) => {
   req.id = uuid();
   res.setHeader("X-Request-Id", req.id);
@@ -40,16 +42,20 @@ app.use((req, res, next) => {
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : true,
+    origin: env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()),
     credentials: true,
   })
 );
 
+if (env.TRUST_PROXY) {
+  app.set("trust proxy", 1);
+}
+
 // Stricter rate limiting for auth routes
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 requests
-  message: "Too many login/signup attempts, please try again later",
+  max: 100, // 100 requests
+  message: "Too many requests, please try again later",
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -101,7 +107,7 @@ app.use(`${API_PREFIX}/users`, userRoutes);
 app.use(`${API_PREFIX}/projects`, projectRoutes);
 app.use(`${API_PREFIX}/rbac`, rbacRoutes);
 app.use(`${API_PREFIX}/tasks`, taskRoutes);
-
+app.use(`${API_PREFIX}/dashboard`, dashboardRoutes);
 
 app.use(errorMiddleware);
 

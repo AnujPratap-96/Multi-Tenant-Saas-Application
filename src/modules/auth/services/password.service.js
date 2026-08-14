@@ -7,6 +7,7 @@ import { hashPassword, executePasswordAction } from "../utils/password.domain.js
 import { handlePasswordTokens } from "../utils/password.token.js";
 import { createPasswordAuditLog } from "../utils/password.audit.js";
 import { sendPasswordActionEmail } from "../utils/password.email.js";
+import { ApiError } from "../../../utils/api-error.js";
 
 export const passwordService = async ({
   email,
@@ -27,7 +28,7 @@ export const passwordService = async ({
     ...options,
   };
   if (newPassword === oldPassword) {
-    throw new Error("New password cannot be the same as the old password");
+    throw new ApiError(400, "New password cannot be the same as the old password");
   }
 
   const existingUser = await findUserByEmail(email);

@@ -7,6 +7,6 @@ client.authentications['api-key'].apiKey = env.BREVO_API_KEY;
 export const emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 export const DEFAULT_SENDER = {
-    name: 'Multi-Tenant App',
-    email: 'no-reply@devs-tinder.site',
+    name: process.env.BREVO_SENDER_NAME || 'Multi-Tenant',
+    email: process.env.BREVO_SENDER_EMAIL || 'officialthakur94@gmail.com',
 };

@@ -1,4 +1,4 @@
-// Tenant invite service - Business logic for invite operations
+// Tenant invite service - Business logic for invite operations (D-7)
 import { randomBytes } from "crypto";
 import { ApiError } from "../../../utils/api-error.js";
 import prisma from "../../../lib/prisma.js";
@@ -6,7 +6,10 @@ import { logAudit } from "../../../lib/audit.logger.js";
 import * as tenantRepository from "../repositories/tenant.repository.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";
 import * as inviteRepository from "../repositories/tenant-invite.repository.js";
-import { TENANT_AUDIT_ACTIONS, TENANT_USER_STATUS } from "../constants/tenant.constants.js";
+import { TENANT_AUDIT_ACTIONS, TENANT_USER_STATUS, INVITE_EXPIRY_DAYS } from "../constants/tenant.constants.js";
+import * as tenantRedis from "../redis/tenant.redis.js";
+import sendEmail from "../../../lib/sendEmail.js";
+import { inviteTemplate } from "../../../templates/invite.template.js";
 
 /**
  * Generate invite token
@@ -16,13 +19,33 @@ const generateInviteToken = () => {
   return randomBytes(32).toString('hex');
 };
 
+const inviteExpiresAt = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + INVITE_EXPIRY_DAYS);
+  return date;
+};
+
 /**
- * Send invite email (placeholder - integrate with email service)
- * @param {Object} invite - Invite data
+ * Send invite email
+ * @param {Object} invite - Invite data ({ token, email, role, tenantId, invitedById })
  */
 const sendInviteEmail = async (invite) => {
-  // TODO: Integrate with actual email service
-  console.log(`Sending invite email to ${invite.email} with token ${invite.token}`);
+  const { token, email, role, tenantId, invitedById } = invite;
+
+  const [tenant, inviter] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: invitedById }, select: { firstName: true, lastName: true } }),
+  ]);
+
+  const inviterName = inviter ? `${inviter.firstName || ''} ${inviter.lastName || ''}`.trim() || 'A team member' : 'A team member';
+  const tenantName = tenant?.name || 'the team';
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const inviteLink = `${frontendUrl}/invite/accept?token=${token}`;
+
+  const template = inviteTemplate({ inviterName, tenantName, role, inviteLink });
+
+  await sendEmail(email, template);
 };
 
 /**
@@ -50,7 +73,7 @@ export const createInvite = async (tenantId, data, invitedById, req) => {
 
   // Check if there's already a pending invite for this email
   const existingInvite = await inviteRepository.findInviteByEmail(tenantId, email);
-  if (existingInvite) {
+  if (existingInvite && existingInvite.status === 'PENDING') {
     throw new ApiError(400, "There's already a pending invite for this email");
   }
 
@@ -63,18 +86,59 @@ export const createInvite = async (tenantId, data, invitedById, req) => {
     }
   }
 
-  // Generate token and create invite
+  // Generate token and create invite (email-keyed row)
   const token = generateInviteToken();
-  const invite = await inviteRepository.createInvite({
+  const expiresAt = inviteExpiresAt();
+  const invite = await inviteRepository.upsertInvite({
     tenantId,
     email,
     role,
     invitedById,
-    token,
+    tokenHash: inviteRepository.hashToken(token),
+    expiresAt,
   });
 
+  // Store plaintext token in Redis (7-day TTL) for the accept link
+  await inviteRepository.storeInviteToken(token, {
+    tenantId,
+    email,
+    role,
+    invitedById,
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
+  });
+
+  // Known emails also get a TenantUser row with INVITED status
+  let membership = null;
+  if (user) {
+    const existingMembership = await membershipRepository.findMembership(tenantId, user.id);
+    if (existingMembership) {
+      // REMOVED -> reactivate as INVITED
+      membership = await membershipRepository.updateMember(tenantId, user.id, {
+        role,
+        status: 'INVITED',
+        invitedById,
+        removedAt: null,
+      });
+    } else {
+      membership = await membershipRepository.addMember({
+        tenantId,
+        userId: user.id,
+        role,
+        status: 'INVITED',
+        invitedById,
+      });
+    }
+  }
+
   // Send invite email
-  await sendInviteEmail(invite);
+  await sendInviteEmail({
+    token,
+    email,
+    role,
+    tenantId,
+    invitedById,
+  });
 
   // Log audit
   await logAudit({
@@ -82,12 +146,23 @@ export const createInvite = async (tenantId, data, invitedById, req) => {
     entityType: 'TENANT',
     entityId: tenantId,
     actorUserId: invitedById,
+    subjectUserId: user?.id ?? null,
     tenantId,
     newValue: { email, role },
     req,
   });
 
-  return invite;
+  return {
+    id: invite.id,
+    email,
+    role,
+    tenantId,
+    invitedById,
+    status: 'PENDING',
+    expiresAt,
+    user: user || null,
+    membership,
+  };
 };
 
 /**
@@ -110,7 +185,7 @@ export const listInvites = async (tenantId, userId, options = {}) => {
 /**
  * Cancel an invite
  * @param {string} tenantId - Tenant ID
- * @param {string} inviteId - Invite ID (userId of invited user)
+ * @param {string} inviteId - Invite ID
  * @param {string} userId - Current user ID
  * @param {Object} req - Request object
  * @returns {Promise<Object>} Cancelled invite
@@ -122,20 +197,27 @@ export const cancelInvite = async (tenantId, inviteId, userId, req) => {
     throw new ApiError(403, "Only admins can cancel invites");
   }
 
-  // Get the invited user
-  const invite = await prisma.tenantUser.findFirst({
-    where: {
-      tenantId,
-      userId: inviteId,
-      status: 'INVITED',
-    },
-  });
-
+  const invite = await inviteRepository.findInviteById(tenantId, inviteId);
   if (!invite) {
     throw new ApiError(404, "Invite not found");
   }
 
-  const cancelledInvite = await inviteRepository.cancelInvite(tenantId, inviteId);
+  const cancelledInvite = await inviteRepository.updateInviteStatus(inviteId, {
+    status: 'CANCELLED',
+  });
+
+  // Clean up the INVITED membership row for known emails
+  const user = await prisma.user.findUnique({ where: { email: invite.email } });
+  if (user) {
+    const membership = await membershipRepository.findMembership(tenantId, user.id);
+    if (membership && membership.status === 'INVITED') {
+      await membershipRepository.updateMember(tenantId, user.id, {
+        status: 'REMOVED',
+        removedAt: new Date(),
+      });
+      await tenantRedis.invalidateMembershipCache(tenantId, user.id);
+    }
+  }
 
   // Log audit
   await logAudit({
@@ -143,8 +225,9 @@ export const cancelInvite = async (tenantId, inviteId, userId, req) => {
     entityType: 'TENANT',
     entityId: tenantId,
     actorUserId: userId,
-    subjectUserId: inviteId,
+    subjectUserId: user?.id ?? null,
     tenantId,
+    newValue: { email: invite.email },
     req,
   });
 
@@ -154,7 +237,7 @@ export const cancelInvite = async (tenantId, inviteId, userId, req) => {
 /**
  * Resend an invite
  * @param {string} tenantId - Tenant ID
- * @param {string} inviteId - Invite ID (userId of invited user)
+ * @param {string} inviteId - Invite ID
  * @param {string} userId - Current user ID
  * @param {Object} req - Request object
  * @returns {Promise<Object>} Resent invite
@@ -166,35 +249,29 @@ export const resendInvite = async (tenantId, inviteId, userId, req) => {
     throw new ApiError(403, "Only admins can resend invites");
   }
 
-  // Get the invited user
-  const invite = await prisma.tenantUser.findFirst({
-    where: {
-      tenantId,
-      userId: inviteId,
-      status: 'INVITED',
-    },
-    include: {
-      user: {
-        select: {
-          email: true,
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-  });
-
+  const invite = await inviteRepository.findInviteById(tenantId, inviteId);
   if (!invite) {
     throw new ApiError(404, "Invite not found");
   }
 
+  if (invite.status !== 'PENDING') {
+    throw new ApiError(400, "Only pending invites can be resent");
+  }
+
   // Generate new token
   const token = generateInviteToken();
-  
-  // Store new token in Redis
+  const expiresAt = inviteExpiresAt();
+
+  // Rotate the hashed token in the table
+  await inviteRepository.updateInviteStatus(inviteId, {
+    tokenHash: inviteRepository.hashToken(token),
+    expiresAt,
+  });
+
+  // Store new plaintext token in Redis
   await inviteRepository.storeInviteToken(token, {
     tenantId,
-    email: invite.user.email,
+    email: invite.email,
     role: invite.role,
     invitedById: invite.invitedById,
     status: 'PENDING',
@@ -204,9 +281,10 @@ export const resendInvite = async (tenantId, inviteId, userId, req) => {
   // Send invite email
   await sendInviteEmail({
     token,
-    email: invite.user.email,
+    email: invite.email,
     role: invite.role,
     tenantId,
+    invitedById: invite.invitedById,
   });
 
   // Log audit
@@ -215,14 +293,21 @@ export const resendInvite = async (tenantId, inviteId, userId, req) => {
     entityType: 'TENANT',
     entityId: tenantId,
     actorUserId: userId,
-    subjectUserId: inviteId,
+    subjectUserId: null,
     tenantId,
+    newValue: { email: invite.email, role: invite.role },
     req,
   });
 
+  // Never return the token (S-17)
   return {
-    ...invite,
-    token,
+    id: invite.id,
+    email: invite.email,
+    role: invite.role,
+    tenantId,
+    invitedById: invite.invitedById,
+    status: 'PENDING',
+    expiresAt,
   };
 };
 
@@ -248,17 +333,48 @@ export const acceptInvite = async (token, userId, req) => {
     throw new ApiError(403, "This invite was sent to a different email address");
   }
 
-  // Check if there's a pending invite
-  const existingInvite = await inviteRepository.findInviteByEmail(tenantId, email);
-  if (!existingInvite) {
+  // Check the invite row is still pending
+  const invite = await inviteRepository.findInviteByEmail(tenantId, email);
+  if (!invite || invite.status !== 'PENDING') {
     throw new ApiError(400, "No pending invite found for this email");
   }
 
-  // Accept the invite
-  const membership = await inviteRepository.acceptInvite(tenantId, userId);
+  if (invite.expiresAt < new Date()) {
+    throw new ApiError(400, "Invite has expired");
+  }
+
+  // Create or activate the membership
+  let membership = await membershipRepository.findMembership(tenantId, userId);
+  if (membership) {
+    if (membership.status === 'ACTIVE' || membership.status === 'SUSPENDED') {
+      throw new ApiError(400, "User is already a member of this tenant");
+    }
+    membership = await membershipRepository.updateMember(tenantId, userId, {
+      role,
+      status: 'ACTIVE',
+      invitedById: invite.invitedById,
+      removedAt: null,
+    });
+  } else {
+    membership = await membershipRepository.addMember({
+      tenantId,
+      userId,
+      role,
+      status: 'ACTIVE',
+      invitedById: invite.invitedById,
+    });
+  }
+
+  // Mark invite accepted
+  await inviteRepository.updateInviteStatus(invite.id, {
+    status: 'ACCEPTED',
+    acceptedAt: new Date(),
+  });
 
   // Delete the invite token
   await inviteRepository.deleteInviteToken(token);
+
+  await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
   // Log audit
   await logAudit({
@@ -297,11 +413,32 @@ export const rejectInvite = async (token, userId, req) => {
     throw new ApiError(403, "This invite was sent to a different email address");
   }
 
-  // Reject the invite
-  const membership = await inviteRepository.rejectInvite(tenantId, userId);
+  // Check the invite row is still pending
+  const invite = await inviteRepository.findInviteByEmail(tenantId, email);
+  if (!invite || invite.status !== 'PENDING') {
+    throw new ApiError(400, "No pending invite found for this email");
+  }
+
+  // Remove the INVITED membership row
+  let membership = null;
+  const existingMembership = await membershipRepository.findMembership(tenantId, userId);
+  if (existingMembership) {
+    membership = await membershipRepository.updateMember(tenantId, userId, {
+      status: 'REMOVED',
+      removedAt: new Date(),
+    });
+  }
+
+  // Mark invite rejected
+  await inviteRepository.updateInviteStatus(invite.id, {
+    status: 'REJECTED',
+    acceptedAt: null,
+  });
 
   // Delete the invite token
   await inviteRepository.deleteInviteToken(token);
+
+  await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
   // Log audit
   await logAudit({

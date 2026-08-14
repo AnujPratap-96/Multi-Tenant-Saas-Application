@@ -59,6 +59,18 @@ export const updateTaskController = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Delete Task
+ */
+export const deleteTaskController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await taskService.deleteTask(id, req.tenantId, req.userId, req);
+  return successResponse(res, {
+    message: "Task deleted successfully",
+    data: result,
+  });
+});
+
+/**
  * Add Assignee
  */
 export const addAssigneeController = asyncHandler(async (req, res) => {
@@ -95,5 +107,17 @@ export const getCommentsController = asyncHandler(async (req, res) => {
   return successResponse(res, {
     message: "Comments retrieved successfully",
     data: comments,
+  });
+});
+
+/**
+ * Delete Comment (soft delete)
+ */
+export const deleteCommentController = asyncHandler(async (req, res) => {
+  const { id, commentId } = req.params;
+  const result = await taskService.deleteComment(id, commentId, req.tenantId, req.userId, req);
+  return successResponse(res, {
+    message: "Comment deleted successfully",
+    data: result,
   });
 });

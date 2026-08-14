@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import logger from "./logger.js";
+import { registerShutdownHandler } from "./shutdown.js";
 const prisma = new PrismaClient({
   log: [
     { emit: "event", level: "error" },
@@ -13,13 +14,6 @@ prisma.$on("error", (e) => {
 prisma.$on("warn", (e) => {
   logger.warn(e, "Prisma warning");
 });
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
-process.on("SIGTERM", async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
+// Graceful shutdown (B-22: single shutdown module, no duplicate signal handlers)
+registerShutdownHandler(() => prisma.$disconnect());
 export default prisma;

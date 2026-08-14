@@ -1,0 +1,1 @@
+in my backend i have scene there is no check for existing invite , we need to make so that no one can spam our db , also in teams i  need to have a view for invitation , with its state , like accepted , rejected , also i can remove the invite etc , all the features 

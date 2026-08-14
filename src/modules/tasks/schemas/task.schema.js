@@ -35,6 +35,12 @@ export const listTasksSchema = requestSchema({
   }),
 });
 
+export const taskParamsSchema = requestSchema({
+  params: z.object({
+    id: z.string().uuid("Invalid task ID"),
+  }),
+});
+
 export const addAssigneeSchema = requestSchema({
   body: z.object({
     userId: z.string().uuid("Invalid user ID"),
@@ -44,5 +50,12 @@ export const addAssigneeSchema = requestSchema({
 export const createCommentSchema = requestSchema({
   body: z.object({
     comment: z.string().trim().min(1).max(1000),
+  }),
+});
+
+export const commentParamsSchema = requestSchema({
+  params: z.object({
+    id: z.string().uuid("Invalid task ID"),
+    commentId: z.string().uuid("Invalid comment ID"),
   }),
 });

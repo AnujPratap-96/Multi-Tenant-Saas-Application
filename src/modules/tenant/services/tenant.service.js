@@ -24,7 +24,7 @@ export const createTenant = async (data, ownerUserId, req) => {
     throw new ApiError(400, "Owner user not found");
   }
 
-  const { slug, Tname } = tenantHelper.createTenantSlugAndName(name);
+  const { slug, name: tenantName } = tenantHelper.createTenantSlugAndName(name);
 
   // Check if slug already exists
   const existingTenant = await tenantRepository.findTenantBySlug(slug);
@@ -34,7 +34,7 @@ export const createTenant = async (data, ownerUserId, req) => {
 
 
   const tenant = await tenantRepository.createTenantWithOwner({
-    name: Tname,
+    name: tenantName,
     slug,
     plan,
     ownerUserId,
@@ -47,7 +47,7 @@ export const createTenant = async (data, ownerUserId, req) => {
     entityId: tenant.id,
     actorUserId: ownerUserId,
     tenantId: tenant.id,
-    newValue: { name: Tname, slug, plan },
+    newValue: { name: tenantName, slug, plan },
     req,
   });
   return tenant;
@@ -228,7 +228,7 @@ export const listTenants = async (userId, options = {}) => {
  * @param {string} userId - Current user ID
  * @returns {Promise<Object>} Tenant membership info
  */
-export const switchTenant = async (tenantId, userId) => {
+export const switchTenant = async (tenantId, userId, req) => {
   // Check if user is a member (any status except REMOVED)
   const membership = await membershipRepository.findMembership(tenantId, userId);
   if (!membership) {
@@ -243,10 +243,26 @@ export const switchTenant = async (tenantId, userId) => {
     throw new ApiError(403, "You are no longer a member of this tenant");
   }
 
+  if (membership.status === TENANT_USER_STATUS.INVITED) {
+    throw new ApiError(403, "Accept your invite before accessing this tenant");
+  }
+
   const tenant = await tenantRepository.findActiveTenantById(tenantId);
   if (!tenant) {
     throw new ApiError(404, "Tenant not found or inactive");
   }
+
+  // B-24: SWITCH_TENANT was defined but never logged
+  await logAudit({
+    action: TENANT_AUDIT_ACTIONS.SWITCH_TENANT,
+    entityType: 'TENANT',
+    entityId: tenantId,
+    actorUserId: userId,
+    tenantId,
+    newValue: { role: membership.role },
+    req,
+  });
+  await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
   return {
     tenant,

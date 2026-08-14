@@ -76,7 +76,6 @@ export const verifyForgotPasswordOtpController = asyncHandler(async (req, res) =
     if (result.isValid && result.purpose === "FORGOT_PASSWORD") {
         clearAuthCookies(res); // Clear any existing auth cookies
         const token = await generatePasswordResetToken({ email: result.email , purpose });
-        console.log("Generated password reset token:", token);
         setPasswordResetCookie(res, token);
         return successResponse(res, {
             message: "OTP verified successfully",

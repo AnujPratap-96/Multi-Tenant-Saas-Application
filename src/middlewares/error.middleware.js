@@ -14,7 +14,8 @@ export default function errorMiddleware(err, req, res, next) {
   else if (!(err instanceof ApiError)) {
     error = new ApiError(500, "Internal Server Error");
   }
-  logger.error({
+  const logLevel = error.statusCode >= 500 ? 'error' : 'warn';
+  logger[logLevel]({
     reqId: req.id,
     method: req.method,
     path: req.originalUrl,

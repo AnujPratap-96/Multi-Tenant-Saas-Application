@@ -39,6 +39,14 @@ const envSchema = z
     RATE_LIMIT_MAX: z.string().regex(/^\d+$/).transform(Number),
     // Security
     BCRYPT_SALT_ROUNDS: z.string().regex(/^\d+$/).transform(Number),
+    CSRF_SECRET: z.string().min(32, "CSRF_SECRET must be at least 32 characters"),
+    // CORS / proxy
+    ALLOWED_ORIGINS: z.string().min(1, "ALLOWED_ORIGINS is required (comma-separated origins)"),
+    FRONTEND_URL: z.string().url("FRONTEND_URL must be a valid URL"),
+    TRUST_PROXY: z
+      .string()
+      .default("false")
+      .transform((v) => (v === "true" || v === "1")),
     // Third-party services
     BREVO_API_KEY: z.string().min(1),
     // Logging

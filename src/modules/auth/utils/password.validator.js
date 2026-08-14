@@ -29,6 +29,10 @@ export const validatePasswordAction = async ({
         throw new ApiError(404, "User not found");
       }
 
+      if (!existingUser.password) {
+        throw new ApiError(400, "This account has no password set. Use Google sign-in or OTP verification instead.");
+      }
+
       if (!oldPassword) {
         throw new ApiError(400, "Old password is required");
       }

@@ -1,9 +1,15 @@
 import request from 'supertest';
-import { describe, it, expect, afterEach } from 'vitest';
-import { app, cleanup, prisma } from '../utils/test-setup.js';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
+import { app, cleanup, prisma, getCsrf } from '../utils/test-setup.js';
 import { generateAuthToken } from '../../src/lib/jwt.js';
 
 describe('Task Management & Cache Consistency', () => {
+  let csrf;
+
+  beforeAll(async () => {
+    csrf = await getCsrf();
+  });
+
   afterEach(async () => {
     await cleanup();
   });
@@ -15,7 +21,7 @@ describe('Task Management & Cache Consistency', () => {
     await prisma.tenantUser.create({ data: { tenantId: tenant.id, userId: user.id, role: 'ADMIN' } });
     const project = await prisma.project.create({ data: { name: 'Main App', tenantId: tenant.id, createdById: user.id } });
     await prisma.projectMember.create({ data: { projectId: project.id, userId: user.id, role: 'OWNER' } });
-    
+
     const { accessToken: token } = await generateAuthToken({ userId: user.id, email: user.email });
 
     // 2. Fetch list (Warm up Redis cache)
@@ -23,7 +29,7 @@ describe('Task Management & Cache Consistency', () => {
       .get(`/api/v1/tasks?projectId=${project.id}`)
       .set('Authorization', `Bearer ${token}`)
       .set('X-Tenant-ID', tenant.id);
-    
+
     expect(listRes1.body.data.tasks.length).toBe(0);
 
     // 3. Create Task
@@ -31,6 +37,8 @@ describe('Task Management & Cache Consistency', () => {
       .post('/api/v1/tasks')
       .set('Authorization', `Bearer ${token}`)
       .set('X-Tenant-ID', tenant.id)
+      .set('x-csrf-token', csrf.token)
+      .set('Cookie', csrf.cookie)
       .send({
         projectId: project.id,
         title: 'Fix Login Bug',
@@ -42,7 +50,7 @@ describe('Task Management & Cache Consistency', () => {
       .get(`/api/v1/tasks?projectId=${project.id}`)
       .set('Authorization', `Bearer ${token}`)
       .set('X-Tenant-ID', tenant.id);
-    
+
     expect(listRes2.body.data.tasks.length).toBe(1);
     expect(listRes2.body.data.tasks[0].title).toBe('Fix Login Bug');
   });

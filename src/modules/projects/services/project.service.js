@@ -38,7 +38,11 @@ export const createProject = async (data, tenantId, userId, req) => {
 export const getProject = async (projectId, tenantId, userId) => {
   // Try to get from cache
   const cachedProject = await projectRedis.getCachedProject(projectId);
-  let project = cachedProject;
+  let project = null;
+
+  if (cachedProject && cachedProject.tenantId === tenantId) {
+    project = cachedProject;
+  }
 
   if (!project) {
     project = await projectRepository.findProjectById(projectId, tenantId);
@@ -243,4 +247,63 @@ export const removeMember = async (projectId, tenantId, targetUserId, userId, re
   });
 
   return { success: true };
+};
+
+/**
+ * Update project member role
+ */
+export const updateMemberRole = async (projectId, tenantId, targetUserId, role, userId, req) => {
+  const project = await projectRepository.findProjectById(projectId, tenantId);
+  if (!project) {
+    throw new ApiError(404, "Project not found");
+  }
+
+  const membership = await projectRepository.getProjectMembership(projectId, userId);
+  if (!membership || membership.role !== PROJECT_ROLES.OWNER) {
+    throw new ApiError(403, "Only the project owner can change member roles");
+  }
+
+  const targetMembership = await projectRepository.getProjectMembership(projectId, targetUserId);
+  if (!targetMembership) {
+    throw new ApiError(404, "Member not found in project");
+  }
+
+  if (userId === targetUserId) {
+    throw new ApiError(400, "Cannot change your own role. Promote another member first.");
+  }
+
+  const updated = await projectRepository.updateProjectMemberRole(projectId, targetUserId, role);
+
+  await projectRedis.invalidateProjectCache(projectId, tenantId);
+
+  await logAudit({
+    action: PROJECT_AUDIT_ACTIONS.MEMBER_UPDATE,
+    entityType: 'PROJECT',
+    entityId: projectId,
+    actorUserId: userId,
+    tenantId,
+    oldValue: { userId: targetUserId, role: targetMembership.role },
+    newValue: { userId: targetUserId, role },
+    req,
+  });
+
+  return updated;
+};
+
+/**
+ * Get project dashboard stats
+ */
+export const getProjectDashboard = async (projectId, tenantId, userId) => {
+  const project = await projectRepository.findProjectById(projectId, tenantId);
+  if (!project) {
+    throw new ApiError(404, "Project not found");
+  }
+
+  const membership = await projectRepository.getProjectMembership(projectId, userId);
+  if (!membership) {
+    throw new ApiError(403, "You are not a member of this project");
+  }
+
+  const stats = await projectRepository.getProjectDashboardStats(projectId, tenantId);
+  return { project, stats, userRole: membership.role };
 };

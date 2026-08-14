@@ -1,6 +1,6 @@
 import { ApiError } from "../../../utils/api-error.js";
 import { env } from "../../../config/env.js";
-import { generateOtp } from "../utils/otp-geneator.js";
+import { generateOtp } from "../utils/otp-generator.js";
 import { sendOtpEmail } from "../utils/otp.email.js";
 import { findUserByEmail } from "../../users/user.repository.js";
 import { OTP_PURPOSE } from "../constants/auth.constants.js";
@@ -27,18 +27,19 @@ export const generateOtpService = async ({
   if (!requestId) {
     throw new ApiError(400, "RequestId is required");
   }
-  if (purpose === OTP_PURPOSE.SIGNUP) {
-    const existingUser = await findUserByEmail(email);
-    if (existingUser) {
-      throw new ApiError(400, "User with this email already exists");
-    }
+  // Generic responses (D-10/S-13): never reveal whether the email has an account.
+  // When the account-existence check fails, return early WITHOUT storing an OTP.
+  const existingUser = await findUserByEmail(email);
+
+  if (purpose === OTP_PURPOSE.SIGNUP && existingUser) {
+    return;
   }
 
-  if (purpose === OTP_PURPOSE.LOGIN || purpose === OTP_PURPOSE.FORGOT_PASSWORD) {
-    const existingUser = await findUserByEmail(email);
-    if (!existingUser) {
-      throw new ApiError(404, "User with this email does not exist");
-    }
+  if (
+    (purpose === OTP_PURPOSE.LOGIN || purpose === OTP_PURPOSE.FORGOT_PASSWORD) &&
+    !existingUser
+  ) {
+    return;
   }
 
   const existingOtpReuestID = await getOtpByEmailAndPurpose(email, purpose);
@@ -49,13 +50,14 @@ export const generateOtpService = async ({
       otpData: existingOTP,
       requestId,
       email,
+      existingRequestId: existingOtpReuestID,
     });
   }
 
   // 🆕 Create new OTP
   const { otp, combinedHash } = generateOtp(env.OTP_LENGTH, requestId);
   const now = Date.now();
-  const ttl = Math.floor(env.OTP_EXPIRES_IN / 1000);
+  const ttl = Math.floor(env.OTP_EXPIRES_IN);
 
   const otpData = {
     email,

@@ -90,14 +90,17 @@ export const softDeleteTask = async (id) => {
  * Assignee Operations
  */
 export const addAssignee = async (taskId, userId) => {
-  return await prisma.taskAssignee.create({
-    data: { taskId, userId },
+  return await prisma.taskAssignee.upsert({
+    where: { taskId_userId: { taskId, userId } },
+    update: { removedAt: null },
+    create: { taskId, userId },
   });
 };
 
 export const removeAssignee = async (taskId, userId) => {
-  return await prisma.taskAssignee.delete({
+  return await prisma.taskAssignee.update({
     where: { taskId_userId: { taskId, userId } },
+    data: { removedAt: new Date() },
   });
 };
 
@@ -120,6 +123,12 @@ export const listComments = async (taskId) => {
     include: {
       user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
     },
+  });
+};
+
+export const findCommentById = async (commentId) => {
+  return await prisma.taskComment.findUnique({
+    where: { id: commentId, deletedAt: null },
   });
 };
 

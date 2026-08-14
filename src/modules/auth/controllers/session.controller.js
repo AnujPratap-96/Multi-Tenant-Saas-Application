@@ -5,7 +5,7 @@ import { successResponse } from "../../../utils/response.js";
 import { refreshAuthTokensService } from "../services/session.service.js";
 
 export const refreshTokensController = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  const refreshToken = req.cookies?.refreshToken;
   const { ipAddress, userAgent } = getRequestContext(req);
 
   const { accessToken, refreshToken: newRefreshToken, user } = await refreshAuthTokensService(
@@ -14,7 +14,7 @@ export const refreshTokensController = asyncHandler(async (req, res) => {
     userAgent
   );
 
-  setAuthCookies(res, accessToken, newRefreshToken);
+  setAuthCookies(res, { accessToken, refreshToken: newRefreshToken });
 
   return successResponse(res, {
     message: "Tokens refreshed successfully",

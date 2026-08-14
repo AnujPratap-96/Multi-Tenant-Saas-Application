@@ -6,6 +6,7 @@ import { setSignupCookie } from "../../../utils/cookies.js";
 import { generateSignupToken } from "../../../lib/jwt.js";
 import { ApiError } from "../../../utils/api-error.js";
 
+
 export const verifyOtpController = asyncHandler(async (req, res) => {
   const { requestId, purpose } = req.query;
   const { otp } = req.body;

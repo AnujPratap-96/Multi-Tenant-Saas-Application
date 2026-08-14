@@ -1,7 +1,7 @@
 import { ApiError } from "../../../utils/api-error.js";
 import { env } from "../../../config/env.js";
 import { OTP_MESSAGES } from "../constants/auth.constants.js";
-import { verifyOtp } from "../utils/otp-geneator.js";
+import { verifyOtp } from "../utils/otp-generator.js";
 import { getOtp, updateOtp, deleteOtp , deleteOtpByEmailAndPurpose} from "../redis/otp.redis.js";
 import { validateOtpState } from "../utils/otp-state.validator.js";
 
@@ -17,7 +17,6 @@ export const verifyOtpService = async ({
   const otpData = await getOtp(requestId);
 
   if (!otpData) {
-  
     throw new ApiError(400, OTP_MESSAGES.EXPIRED);
   }
 
@@ -33,7 +32,7 @@ export const verifyOtpService = async ({
   if (!isValid) {
     otpData.attempts += 1;
 
-    const ttl = Math.floor(env.OTP_EXPIRES_IN / 1000);
+    const ttl = Math.floor(env.OTP_EXPIRES_IN);
 
     await updateOtp({
       requestId,

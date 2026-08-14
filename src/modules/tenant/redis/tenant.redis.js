@@ -3,6 +3,7 @@ import { redisClient } from "../../../config/redis.js";
 const TENANT_CACHE_PREFIX = "tenant:";
 const TENANT_MEMBERSHIP_PREFIX = "tenant_m:";
 const TENANT_TTL = 3600; // 1 hour
+const MEMBERSHIP_TTL = 300; // 5 minutes
 
 const buildTenantKey = (tenantId) => `${TENANT_CACHE_PREFIX}${tenantId}`;
 const buildMembershipKey = (tenantId, userId) => `${TENANT_MEMBERSHIP_PREFIX}${tenantId}:${userId}`;
@@ -26,7 +27,7 @@ export const getCachedMembership = async (tenantId, userId) => {
 
 export const setCachedMembership = async (tenantId, userId, membershipData) => {
   const key = buildMembershipKey(tenantId, userId);
-  await redisClient.set(key, JSON.stringify(membershipData), { EX: TENANT_TTL });
+  await redisClient.set(key, JSON.stringify(membershipData), { EX: MEMBERSHIP_TTL });
 };
 
 export const invalidateTenantCache = async (tenantId) => {

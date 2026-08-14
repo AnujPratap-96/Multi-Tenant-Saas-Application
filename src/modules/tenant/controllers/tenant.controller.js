@@ -90,7 +90,7 @@ export const listTenantsController = async (req, res, ) => {
  */
 export const switchTenantController = async (req, res, next) => {
   const { id } = req.params;
-  const result = await tenantService.switchTenant(id, req.userId);
+  const result = await tenantService.switchTenant(id, req.userId, req);
   return successResponse(res, {
     message: "Tenant switched successfully",
     data: result,

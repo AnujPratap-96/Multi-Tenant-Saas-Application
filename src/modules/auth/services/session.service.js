@@ -29,6 +29,10 @@ export const refreshAuthTokensService = async (refreshToken, ipAddress, userAgen
     throw new ApiError(401, "Session not found or revoked");
   }
 
+  if (!session.user.isActive || session.user.deletedAt) {
+    throw new ApiError(401, "Account is not active");
+  }
+
   // 3. JWT Rotation: Revoke current session
   await revokeSession(session.id);
 

@@ -51,3 +51,14 @@ export const addMemberSchema = requestSchema({
     role: z.enum([PROJECT_ROLES.OWNER, PROJECT_ROLES.MAINTAINER, PROJECT_ROLES.MEMBER]).default(PROJECT_ROLES.MEMBER),
   }),
 });
+
+// Update member role schema
+export const updateMemberRoleSchema = requestSchema({
+  params: z.object({
+    id: z.string().uuid("Invalid project ID"),
+    userId: z.string().uuid("Invalid user ID"),
+  }),
+  body: z.object({
+    role: z.enum([PROJECT_ROLES.OWNER, PROJECT_ROLES.MAINTAINER, PROJECT_ROLES.MEMBER]),
+  }),
+});

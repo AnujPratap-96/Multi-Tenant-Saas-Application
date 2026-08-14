@@ -47,6 +47,10 @@ export const resolveTenant = asyncHandler(async (req, res, next) => {
       throw new ApiError(403, "You are no longer a member of this tenant");
     }
     
+    if (membership.status === 'INVITED') {
+      throw new ApiError(403, "Accept your invite before accessing this tenant");
+    }
+    
     req.tenantMembership = membership;
   }
   
@@ -112,27 +116,3 @@ export const requireTenantOwner = asyncHandler(async (req, res, next) => {
   
   next();
 });
-
-/**
- * Check if user has permission (combines with existing RBAC)
- * @param {string} permission - Permission to check
- */
-export const requireTenantPermission = (permission) => {
-  return asyncHandler(async (req, res, next) => {
-    if (!req.tenantId) {
-      throw new ApiError(400, "Tenant context required");
-    }
-    
-    if (!req.userId) {
-      throw new ApiError(401, "Authentication required");
-    }
-    
-    // For now, check if user is admin - can be extended with actual permission checks
-    const isAdmin = await membershipRepository.isTenantAdmin(req.tenantId, req.userId);
-    if (!isAdmin) {
-      throw new ApiError(403, "Insufficient tenant permissions");
-    }
-    
-    next();
-  });
-};

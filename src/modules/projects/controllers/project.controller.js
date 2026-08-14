@@ -32,8 +32,8 @@ export const getProjectController = asyncHandler(async (req, res) => {
  */
 export const listProjectsController = asyncHandler(async (req, res) => {
   const options = {
-    page: parseInt(req.query.page),
-    limit: parseInt(req.query.limit),
+    page: req.query.page ? parseInt(req.query.page) : 1,
+    limit: req.query.limit ? parseInt(req.query.limit) : 20,
     search: req.query.search,
     isArchived: req.query.isArchived === 'true',
   };
@@ -88,5 +88,30 @@ export const removeMemberController = asyncHandler(async (req, res) => {
   await projectService.removeMember(id, req.tenantId, targetUserId, req.userId, req);
   return successResponse(res, {
     message: "Member removed successfully",
+  });
+});
+
+/**
+ * Update member role
+ */
+export const updateMemberRoleController = asyncHandler(async (req, res) => {
+  const { id, userId: targetUserId } = req.params;
+  const { role } = req.body;
+  const member = await projectService.updateMemberRole(id, req.tenantId, targetUserId, role, req.userId, req);
+  return successResponse(res, {
+    message: "Member role updated successfully",
+    data: member,
+  });
+});
+
+/**
+ * Get project dashboard
+ */
+export const getProjectDashboardController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await projectService.getProjectDashboard(id, req.tenantId, req.userId);
+  return successResponse(res, {
+    message: "Project dashboard retrieved successfully",
+    data: result,
   });
 });

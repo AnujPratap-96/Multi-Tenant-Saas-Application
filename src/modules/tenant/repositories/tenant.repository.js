@@ -69,6 +69,21 @@ export const createTenant = async (data) => {
  * @param {string} id - Tenant ID
  * @returns {Promise<Object|null>} Tenant or null
  */
+export const findTenantById = async (id) => {
+  return await prisma.tenant.findUnique({
+    where: { id },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+  });
+};
 
 export const findTenantBySlug = async (slug) => {
   return await prisma.tenant.findUnique({
@@ -289,7 +304,7 @@ export const findTenantMembership = async (tenantId, userId) => {
  * @returns {Promise<Array>} List of tenant memberships
  */
 export const getUserTenants = async (userId) => {
-  return await prisma.tenantUser.findMany({
+  const memberships = await prisma.tenantUser.findMany({
     where: {
       userId,
       status: { not: 'REMOVED' },
@@ -314,4 +329,11 @@ export const getUserTenants = async (userId) => {
     },
     orderBy: { joinedAt: 'desc' },
   });
+
+  return memberships.map(({ tenant, role, status, ...rest }) => ({
+    ...tenant,
+    userRole: role,
+    membershipStatus: status,
+    membershipId: rest.tenantId,
+  }));
 };

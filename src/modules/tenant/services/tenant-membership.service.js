@@ -5,6 +5,7 @@ import { logAudit } from "../../../lib/audit.logger.js";
 import * as tenantRepository from "../repositories/tenant.repository.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";
 import { TENANT_AUDIT_ACTIONS, TENANT_USER_STATUS } from "../constants/tenant.constants.js";
+import * as tenantRedis from "../redis/tenant.redis.js";
 
 /**
  * Add a member to a tenant
@@ -39,6 +40,8 @@ export const addMember = async (tenantId, data, invitedById, req) => {
         status: TENANT_USER_STATUS.ACTIVE,
         removedAt: null,
       });
+
+      await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
       await logAudit({
         action: TENANT_AUDIT_ACTIONS.ADD_MEMBER,
@@ -112,6 +115,8 @@ export const updateMemberRole = async (tenantId, userId, data, actorUserId, req)
     role: data.role,
   });
 
+  await tenantRedis.invalidateMembershipCache(tenantId, userId);
+
   // Log audit
   await logAudit({
     action: TENANT_AUDIT_ACTIONS.ROLE_CHANGE,
@@ -156,6 +161,8 @@ export const removeMember = async (tenantId, userId, actorUserId, req) => {
   }
 
   const removedMembership = await membershipRepository.removeMember(tenantId, userId);
+
+  await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
   // Log audit
   await logAudit({
@@ -205,6 +212,8 @@ export const suspendMember = async (tenantId, userId, actorUserId, req) => {
 
   const suspendedMembership = await membershipRepository.suspendMember(tenantId, userId);
 
+  await tenantRedis.invalidateMembershipCache(tenantId, userId);
+
   // Log audit
   await logAudit({
     action: TENANT_AUDIT_ACTIONS.SUSPEND_MEMBER,
@@ -247,6 +256,8 @@ export const restoreMember = async (tenantId, userId, actorUserId, req) => {
   }
 
   const restoredMembership = await membershipRepository.restoreMember(tenantId, userId);
+
+  await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
   // Log audit
   await logAudit({

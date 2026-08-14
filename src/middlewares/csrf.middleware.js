@@ -7,13 +7,13 @@ const {
   validateRequest,
   doubleCsrfProtection,
 } = doubleCsrf({
-  getSecret: () => env.CSRF_SECRET || "super-secret-key-change-me-32chars!!",
+  getSecret: () => env.CSRF_SECRET,
   // v4 requires this — use userId if authenticated, fall back to IP
   getSessionIdentifier: (req) => req.userId || req.ip || "anonymous",
   cookieName: "x-csrf-token",
   cookieOptions: {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
     secure: env.NODE_ENV === "production",
     path: "/",
   },

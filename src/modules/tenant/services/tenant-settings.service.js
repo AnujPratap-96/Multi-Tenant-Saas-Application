@@ -1,10 +1,43 @@
-// Tenant settings service - Business logic for tenant settings
+// Tenant settings service - Business logic for tenant settings (D-14)
 import { ApiError } from "../../../utils/api-error.js";
 import { redisClient } from "../../../config/redis.js";
 import * as tenantRepository from "../repositories/tenant.repository.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";
+import * as settingsRepository from "../repositories/tenant-settings.repository.js";
 
 const buildSettingsKey = (tenantId) => `tenant:settings:${tenantId}`;
+
+/**
+ * Read-through: Redis cache -> DB (D-14/S-18)
+ * @param {string} tenantId - Tenant ID
+ * @returns {Promise<Object>} Settings
+ */
+const readSettings = async (tenantId) => {
+  const key = buildSettingsKey(tenantId);
+
+  const cached = await redisClient.get(key);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  const row = await settingsRepository.findSettings(tenantId);
+  const settings = row ? row.settings : {};
+
+  // Populate cache
+  await redisClient.set(key, JSON.stringify(settings));
+
+  return settings;
+};
+
+/**
+ * Write-through: DB then Redis (D-14/S-18)
+ * @param {string} tenantId - Tenant ID
+ * @param {Object} settings - Settings payload
+ */
+const writeSettings = async (tenantId, settings) => {
+  await settingsRepository.upsertSettings(tenantId, settings);
+  await redisClient.set(buildSettingsKey(tenantId), JSON.stringify(settings));
+};
 
 /**
  * Get settings for a tenant
@@ -20,16 +53,12 @@ export const getSettings = async (tenantId, userId) => {
   }
 
   // Check if tenant exists
-  const tenant = await tenantRepository.findTenantById(tenantId);
+  const tenant = await tenantRepository.findActiveTenantById(tenantId);
   if (!tenant) {
     throw new ApiError(404, "Tenant not found");
   }
 
-  // Get settings from Redis
-  const key = buildSettingsKey(tenantId);
-  const settings = await redisClient.get(key);
-  
-  return settings ? JSON.parse(settings) : {};
+  return readSettings(tenantId);
 };
 
 /**
@@ -47,24 +76,19 @@ export const updateSettings = async (tenantId, data, userId) => {
   }
 
   // Check if tenant exists
-  const tenant = await tenantRepository.findTenantById(tenantId);
+  const tenant = await tenantRepository.findActiveTenantById(tenantId);
   if (!tenant) {
     throw new ApiError(404, "Tenant not found");
   }
 
-  // Get existing settings
-  const key = buildSettingsKey(tenantId);
-  const existingSettings = await redisClient.get(key);
-  const currentSettings = existingSettings ? JSON.parse(existingSettings) : {};
-
   // Merge new settings
+  const currentSettings = await readSettings(tenantId);
   const newSettings = {
     ...currentSettings,
     ...data.settings,
   };
 
-  // Save to Redis (no expiry for settings)
-  await redisClient.set(key, JSON.stringify(newSettings));
+  await writeSettings(tenantId, newSettings);
 
   return newSettings;
 };
@@ -83,12 +107,12 @@ export const deleteSettings = async (tenantId, userId) => {
   }
 
   // Check if tenant exists
-  const tenant = await tenantRepository.findTenantById(tenantId);
+  const tenant = await tenantRepository.findActiveTenantById(tenantId);
   if (!tenant) {
     throw new ApiError(404, "Tenant not found");
   }
 
-  // Delete settings from Redis
-  const key = buildSettingsKey(tenantId);
-  await redisClient.del(key);
+  // Delete from DB and Redis
+  await settingsRepository.deleteSettings(tenantId);
+  await redisClient.del(buildSettingsKey(tenantId));
 };
