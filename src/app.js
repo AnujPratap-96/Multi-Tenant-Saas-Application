@@ -22,7 +22,7 @@ import passport from "./lib/passport.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 import healthRoutes from "./modules/health/routes/health.routes.js";
-import { doubleCsrfProtection, generateToken } from "./middlewares/csrf.middleware.js";
+import { doubleCsrfProtection, generateCsrfToken } from "./middlewares/csrf.middleware.js";
 import { successResponse } from "./utils/response.js";
 
 
@@ -81,7 +81,7 @@ app.use(`${API_PREFIX}/health`, healthRoutes);
 
 // CSRF Token Generation
 app.get(`${API_PREFIX}/csrf-token`, (req, res) => {
-  const token = generateToken(req, res);
+  const token = generateCsrfToken(req, res);
   return successResponse(res, { data: { token } });
 });
 

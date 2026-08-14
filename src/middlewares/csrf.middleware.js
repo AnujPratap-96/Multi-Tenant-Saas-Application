@@ -3,20 +3,25 @@ import { env } from "../config/env.js";
 
 const {
   invalidCsrfTokenError,
-  generateToken,
+  generateCsrfToken,
   validateRequest,
   doubleCsrfProtection,
 } = doubleCsrf({
-  getSecret: () => env.CSRF_SECRET || "super-secret-key-change-me",
+  getSecret: () => env.CSRF_SECRET || "super-secret-key-change-me-32chars!!",
+  // v4 requires this — use userId if authenticated, fall back to IP
+  getSessionIdentifier: (req) => req.userId || req.ip || "anonymous",
   cookieName: "x-csrf-token",
   cookieOptions: {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
+    path: "/",
   },
   size: 64,
   ignoredMethods: ["GET", "HEAD", "OPTIONS"],
-  getTokenFromRequest: (req) => req.headers["x-csrf-token"],
+  // v4 renamed getTokenFromRequest → getCsrfTokenFromRequest
+  getCsrfTokenFromRequest: (req) => req.headers["x-csrf-token"],
 });
 
-export { doubleCsrfProtection, generateToken, invalidCsrfTokenError };
+export { doubleCsrfProtection, generateCsrfToken, invalidCsrfTokenError };
+

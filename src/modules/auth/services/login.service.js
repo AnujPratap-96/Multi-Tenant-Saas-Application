@@ -19,6 +19,10 @@ export const loginWithEmailPasswordService = async (email, password, ipAddress, 
         throw new ApiError(401, "Invalid credentials");
     }
 
+    if (!user.password) {
+        throw new ApiError(401, "This account uses Google sign-in or OTP. Use one of those to log in.");
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
         throw new ApiError(401, "Invalid credentials");

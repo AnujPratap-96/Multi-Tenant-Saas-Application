@@ -48,7 +48,19 @@ export const findSessionByHash = async (refreshTokenHash) => {
       },
     },
     include: {
-      user: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          avatarUrl: true,
+          emailVerified: true,
+          isActive: true,
+          lastLoginAt: true,
+          createdAt: true,
+        },
+      },
     },
   });
 };
@@ -56,6 +68,29 @@ export const findSessionByHash = async (refreshTokenHash) => {
 export const revokeSession = async (sessionId) => {
   return prisma.authSession.update({
     where: { id: sessionId },
+    data: {
+      isRevoked: true,
+      revokedAt: new Date(),
+    },
+  });
+};
+
+export const revokeSessionByHash = async (refreshTokenHash) => {
+  if (!refreshTokenHash) {
+    throw new Error("Refresh token hash is required to revoke a session");
+  }
+
+  const session = await prisma.authSession.findFirst({
+    where: {
+      refreshTokenHash,
+      isRevoked: false,
+    },
+  });
+
+  if (!session) return null;
+
+  return prisma.authSession.update({
+    where: { id: session.id },
     data: {
       isRevoked: true,
       revokedAt: new Date(),

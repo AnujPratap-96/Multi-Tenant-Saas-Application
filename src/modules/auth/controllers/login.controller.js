@@ -1,11 +1,12 @@
 import { asyncHandler } from "../../../utils/async-handler.js";
 import { getRequestContext } from "../../../utils/requestContext.js";
 import { loginWithEmailPasswordService, loginWithOtpService } from "../services/login.service.js";
+import { logoutService } from "../services/logout.service.js";
 import { setAuthCookies } from "../../../utils/cookies.js";
 import { successResponse } from "../../../utils/response.js";
 import { googleLoginService } from "../services/google.service.js";
 import { clearAuthCookies } from "../../../utils/cookies.js";
-import { da } from "zod/locales";
+import { env } from "../../../config/env.js";
 
 export const loginWithEmailAndPasswordController = asyncHandler(async (req, res) => {
 
@@ -14,7 +15,7 @@ export const loginWithEmailAndPasswordController = asyncHandler(async (req, res)
 
   const { accessToken, refreshToken, user } = await loginWithEmailPasswordService(email, password, ipAddress, userAgent);
 
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, { accessToken, refreshToken });
 
   return successResponse(res, {
     success: true,
@@ -31,7 +32,7 @@ export const loginWithOtpController = asyncHandler(async (req, res) => {
 
   const { accessToken, refreshToken, user } = await loginWithOtpService(otp, ipAddress, userAgent, requestId, purpose);
 
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, { accessToken, refreshToken });
   return successResponse(res, {
     success: true,
     message: "Login successful",
@@ -44,20 +45,18 @@ export const loginWithGoogleController = asyncHandler(async (req, res) => {
   const { ipAddress, userAgent } = getRequestContext(req);
   const { accessToken, refreshToken, user } = await googleLoginService(req.user, ipAddress, userAgent);
 
-  setAuthCookies(res, accessToken, refreshToken);
-  return successResponse(res, {
-    success: true,
-    message: "Login successful",
-    data: user
-  });
+  setAuthCookies(res, { accessToken, refreshToken });
+  
+  return res.redirect(`${env.FRONTEND_URL}/dashboard`);
 
 });
 
 export const logoutController = asyncHandler(async (req, res) => {
 
-  const { userId } = req.user;
+  const userId = req.userId;
+  const refreshToken = req.cookies?.refreshToken;
   const { ipAddress, userAgent } = getRequestContext(req);
-  const data = await logoutService(userId, ipAddress, userAgent);
+  const data = await logoutService({ userId, refreshToken, ipAddress, userAgent });
   clearAuthCookies(res);
   return successResponse(res, data);
 });

@@ -1,6 +1,6 @@
 import { asyncHandler } from "../../../utils/async-handler.js";
 import { successResponse } from "../../../utils/response.js";
-import { prisma } from "../../../lib/db.js";
+import prisma from "../../../lib/prisma.js";
 import { redisClient } from "../../../config/redis.js";
 
 export const getHealth = asyncHandler(async (req, res) => {
