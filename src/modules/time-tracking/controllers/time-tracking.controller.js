@@ -3,8 +3,8 @@ import * as timeTrackingService from "../services/time-tracking.service.js";
 export const createTimeEntryController = async (req, res, next) => {
   try {
     const result = await timeTrackingService.createTimeEntry({
-      userId: req.user.id,
-      tenantId: req.tenant.id,
+      userId: req.userId || req.user?.id,
+      tenantId: req.tenantId || req.tenant?.id,
       taskId: req.validated.params.taskId,
       validated: req.validated.body,
     });
@@ -17,8 +17,8 @@ export const createTimeEntryController = async (req, res, next) => {
 export const stopTimeEntryController = async (req, res, next) => {
   try {
     const result = await timeTrackingService.stopTimeEntry({
-      userId: req.user.id,
-      tenantId: req.tenant.id,
+      userId: req.userId || req.user?.id,
+      tenantId: req.tenantId || req.tenant?.id,
       entryId: req.validated.params.entryId,
     });
     return res.status(200).json({ success: true, data: result });
@@ -30,8 +30,8 @@ export const stopTimeEntryController = async (req, res, next) => {
 export const updateTimeEntryController = async (req, res, next) => {
   try {
     const result = await timeTrackingService.updateTimeEntry({
-      userId: req.user.id,
-      tenantId: req.tenant.id,
+      userId: req.userId || req.user?.id,
+      tenantId: req.tenantId || req.tenant?.id,
       entryId: req.validated.params.entryId,
       validated: req.validated.body,
     });
@@ -44,8 +44,8 @@ export const updateTimeEntryController = async (req, res, next) => {
 export const deleteTimeEntryController = async (req, res, next) => {
   try {
     const result = await timeTrackingService.deleteTimeEntry({
-      userId: req.user.id,
-      tenantId: req.tenant.id,
+      userId: req.userId || req.user?.id,
+      tenantId: req.tenantId || req.tenant?.id,
       entryId: req.validated.params.entryId,
     });
     return res.status(200).json({ success: true, data: result });
@@ -57,8 +57,8 @@ export const deleteTimeEntryController = async (req, res, next) => {
 export const listTaskTimeEntriesController = async (req, res, next) => {
   try {
     const result = await timeTrackingService.listTaskTimeEntries({
-      userId: req.user.id,
-      tenantId: req.tenant.id,
+      userId: req.userId || req.user?.id,
+      tenantId: req.tenantId || req.tenant?.id,
       taskId: req.validated.params.taskId,
       validated: req.validated.query,
     });
@@ -71,8 +71,8 @@ export const listTaskTimeEntriesController = async (req, res, next) => {
 export const listMyTimeEntriesController = async (req, res, next) => {
   try {
     const result = await timeTrackingService.listMyTimeEntries({
-      userId: req.user.id,
-      tenantId: req.tenant.id,
+      userId: req.userId || req.user?.id,
+      tenantId: req.tenantId || req.tenant?.id,
       validated: req.validated.query,
     });
     return res.status(200).json({ success: true, ...result });

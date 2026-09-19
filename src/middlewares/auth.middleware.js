@@ -43,6 +43,6 @@ export const requireAccessToken = asyncHandler(async (req, res, next) => {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
     req.userId = payload.userId;
     req.email = payload.email;
+    req.user = { id: payload.userId, email: payload.email };
     next();
-
 });
