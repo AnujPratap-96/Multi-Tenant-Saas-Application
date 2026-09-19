@@ -9,7 +9,7 @@ export const listNotificationsController = async (req, res, next) => {
       tenantId,
       req.validated
     );
-    return res.status(200).json({ success: true, ...result });
+    return res.status(200).json({ success: true, data: result, ...result });
   } catch (err) {
     next(err);
   }
@@ -46,7 +46,7 @@ export const unreadCountController = async (req, res, next) => {
     const userId = req.userId || req.user?.id;
     const tenantId = req.tenantId || req.tenant?.id;
     const result = await notificationService.getUnreadCount(userId, tenantId);
-    return res.status(200).json({ success: true, ...result });
+    return res.status(200).json({ success: true, data: result, ...result });
   } catch (err) {
     next(err);
   }

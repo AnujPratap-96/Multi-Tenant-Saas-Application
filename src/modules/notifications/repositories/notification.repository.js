@@ -34,15 +34,20 @@ export const createNotification = async ({
   });
 };
 
-export const listNotifications = async (tenantId, userId, { page, limit, unreadOnly }) => {
+export const listNotifications = async (tenantId, userId, { page = 1, limit = 25, unreadOnly } = {}) => {
+  if (!tenantId || !userId) {
+    return { items: [], total: 0, page: 1, limit: 25, unreadCount: 0 };
+  }
   const where = { tenantId, userId };
   if (unreadOnly) where.readAt = null;
+  const pageNum = Number(page) || 1;
+  const limitNum = Number(limit) || 25;
   const [items, total] = await Promise.all([
     prisma.notification.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum,
       select: {
         id: true,
         type: true,
@@ -56,16 +61,18 @@ export const listNotifications = async (tenantId, userId, { page, limit, unreadO
     }),
     prisma.notification.count({ where }),
   ]);
-  return { items, total, page, limit, unreadCount: await getUnreadCount(tenantId, userId) };
+  return { items, total, page: pageNum, limit: limitNum, unreadCount: await getUnreadCount(tenantId, userId) };
 };
 
 export const getUnreadCount = (tenantId, userId) => {
+  if (!tenantId || !userId) return 0;
   return prisma.notification.count({
     where: { tenantId, userId, readAt: null },
   });
 };
 
 export const markRead = async (tenantId, userId, notificationId) => {
+  if (!tenantId || !userId || !notificationId) return null;
   const existing = await prisma.notification.findFirst({
     where: { id: notificationId, tenantId, userId },
   });
@@ -78,6 +85,7 @@ export const markRead = async (tenantId, userId, notificationId) => {
 };
 
 export const markAllRead = async (tenantId, userId) => {
+  if (!tenantId || !userId) return { updated: 0 };
   const result = await prisma.notification.updateMany({
     where: { tenantId, userId, readAt: null },
     data: { readAt: new Date() },
