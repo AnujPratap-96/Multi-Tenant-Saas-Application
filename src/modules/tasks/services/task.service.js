@@ -57,36 +57,63 @@ export const createTask = async (data, tenantId, userId, req) => {
   const { projectId, departmentIds } = data;
 
   let project = null;
-  let effectiveDeptIds = departmentIds;
+  let effectiveDeptIds = departmentIds || [];
   if (projectId) {
     project = await projectRepository.findProjectById(projectId, tenantId);
     if (!project) throw new ApiError(404, "Project not found");
-    effectiveDeptIds = project.departments.map((d) => d.departmentId);
+    const projectDeptIds = (project.departments || []).map((d) => d.departmentId);
+    effectiveDeptIds = projectDeptIds.length ? projectDeptIds : (departmentIds || []);
   } else if (!effectiveDeptIds || !effectiveDeptIds.length) {
     throw new ApiError(400, "departmentIds is required for standalone tasks");
   }
 
-  // Validate every department belongs to this tenant
-  const depts = await prisma.department.findMany({
-    where: { id: { in: effectiveDeptIds }, tenantId, deletedAt: null },
-    select: { id: true },
-  });
-  if (depts.length !== effectiveDeptIds.length) {
-    throw new ApiError(400, "One or more departments are invalid");
+  // Validate every department belongs to this tenant (if any)
+  if (effectiveDeptIds.length > 0) {
+    const depts = await prisma.department.findMany({
+      where: { id: { in: effectiveDeptIds }, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (depts.length !== effectiveDeptIds.length) {
+      throw new ApiError(400, "One or more departments are invalid");
+    }
+
+    // Authorization: a department member (or admin) may create the task
+    if (!(await departmentAuth.canCreateTask(tenantId, userId, effectiveDeptIds))) {
+      throw new ApiError(403, "You can only create tasks in departments you belong to");
+    }
+  } else if (projectId) {
+    if (!(await departmentAuth.canViewProject(tenantId, userId, project))) {
+      throw new ApiError(403, "You do not have access to this project");
+    }
   }
 
-  // Authorization: a department member (or admin) may create the task
-  if (!(await departmentAuth.canCreateTask(tenantId, userId, effectiveDeptIds))) {
-    throw new ApiError(403, "You can only create tasks in departments you belong to");
-  }
+  const {
+    title,
+    description,
+    priority,
+    status,
+    dueDate,
+    taskTypeId,
+    estimatedMinutes,
+  } = data;
 
   const task = await taskRepository.createTask({
-    ...data,
-    initialDueDate: data.dueDate ? new Date(data.dueDate) : null,
+    title,
+    description: description || null,
+    priority: priority || "MEDIUM",
+    status: status || "TODO",
+    taskTypeId: taskTypeId || null,
+    dueDate: dueDate ? new Date(dueDate) : null,
+    initialDueDate: dueDate ? new Date(dueDate) : null,
+    estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes, 10) : null,
+    projectId,
     tenantId,
     createdById: userId,
   });
-  await taskRepository.createTaskDepartments(task.id, effectiveDeptIds);
+
+  if (effectiveDeptIds.length > 0) {
+    await taskRepository.createTaskDepartments(task.id, effectiveDeptIds);
+  }
 
   await taskRepository.writeTaskActivity({
     tenantId,
