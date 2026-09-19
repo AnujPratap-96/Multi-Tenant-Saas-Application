@@ -3,7 +3,6 @@ import { Router } from 'express';
 import { validate } from '../../../middlewares/validate.middleware.js';
 import { requireAccessToken } from '../../../middlewares/auth.middleware.js';
 import { resolveTenant, requireTenant } from '../../tenant/middleware/tenant.middleware.js';
-import { requirePermission } from '../../rbac/middleware/rbac.middleware.js';
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -11,7 +10,10 @@ import {
   taskParamsSchema,
   addAssigneeSchema,
   createCommentSchema,
+  updateCommentSchema,
   commentParamsSchema,
+  removeAssigneeSchema,
+  taskActivitySchema,
 } from '../schemas/task.schema.js';
 import {
   createTaskController,
@@ -21,26 +23,39 @@ import {
   deleteTaskController,
   addAssigneeController,
   addCommentController,
+  updateCommentController,
+  removeAssigneeController,
   getCommentsController,
   deleteCommentController,
+  getTaskActivityController,
+  listMyTasksController,
 } from '../controllers/task.controller.js';
 
 const router = Router();
 
-// All routes require authentication and tenant context
+// All routes require authentication and tenant context.
+// Authorization is enforced in the service layer (department-aware): admins, department managers,
+// project members, and assignees — NOT via the generic org RBAC guard.
 router.use(requireAccessToken);
 router.use(resolveTenant);
 router.use(requireTenant);
 
+// My tasks (assigned to current user)
+router.get('/my', listMyTasksController);
+
 // Task CRUD
-router.post('/', requirePermission('task', 'create'), validate(createTaskSchema), createTaskController);
+router.post('/', validate(createTaskSchema), createTaskController);
 router.get('/', validate(listTasksSchema), listTasksController);
 router.get('/:id', validate(taskParamsSchema), getTaskController);
-router.patch('/:id', requirePermission('task', 'update'), validate(taskParamsSchema), validate(updateTaskSchema), updateTaskController);
-router.delete('/:id', requirePermission('task', 'delete'), validate(taskParamsSchema), deleteTaskController);
+router.patch('/:id', validate(taskParamsSchema), validate(updateTaskSchema), updateTaskController);
+router.delete('/:id', validate(taskParamsSchema), deleteTaskController);
 
 // Assignees
-router.post('/:id/assignees', requirePermission('task', 'update'), validate(taskParamsSchema), validate(addAssigneeSchema), addAssigneeController);
+router.post('/:id/assignees', validate(taskParamsSchema), validate(addAssigneeSchema), addAssigneeController);
+router.delete('/:id/assignees', validate(removeAssigneeSchema), removeAssigneeController);
+
+// Task activity timeline
+router.get('/:id/activity', validate(taskActivitySchema), getTaskActivityController);
 
 // Comments
 /**
@@ -64,7 +79,7 @@ router.post('/:id/assignees', requirePermission('task', 'update'), validate(task
  *       201:
  *         description: Comment added
  */
-router.post('/:id/comments', requirePermission('task', 'update'), validate(taskParamsSchema), validate(createCommentSchema), addCommentController);
+router.post('/:id/comments', validate(taskParamsSchema), validate(createCommentSchema), addCommentController);
 
 /**
  * @swagger
@@ -86,6 +101,27 @@ router.get('/:id/comments', validate(taskParamsSchema), getCommentsController);
 /**
  * @swagger
  * /tasks/{id}/comments/{commentId}:
+ *   patch:
+ *     summary: Edit a comment (author only)
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Comment updated
+ */
+router.patch('/:id/comments/:commentId', validate(updateCommentSchema), updateCommentController);
+
+/**
+ * @swagger
+ * /tasks/{id}/comments/{commentId}:
  *   delete:
  *     summary: Soft-delete a comment (B-23)
  *     tags: [Tasks]
@@ -102,6 +138,6 @@ router.get('/:id/comments', validate(taskParamsSchema), getCommentsController);
  *       200:
  *         description: Comment deleted
  */
-router.delete('/:id/comments/:commentId', requirePermission('task', 'update'), validate(commentParamsSchema), deleteCommentController);
+router.delete('/:id/comments/:commentId', validate(commentParamsSchema), deleteCommentController);
 
 export default router;

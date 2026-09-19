@@ -11,6 +11,7 @@ export const createProjectSchema = requestSchema({
       .min(MIN_PROJECT_NAME_LENGTH, `Project name must be at least ${MIN_PROJECT_NAME_LENGTH} characters`)
       .max(MAX_PROJECT_NAME_LENGTH, `Project name must not exceed ${MAX_PROJECT_NAME_LENGTH} characters`),
     description: z.string().trim().max(500).optional(),
+    departmentIds: z.array(z.string().uuid()).min(1, "At least one department is required"),
   }),
 });
 

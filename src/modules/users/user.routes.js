@@ -9,6 +9,7 @@ import {
   listUsersQuerySchema,
   updateUserSchema,
   sessionParamsSchema,
+  userSessionParamsSchema,
 } from './user.schema.js';
 import {
   getMyProfileController,
@@ -20,6 +21,8 @@ import {
   reactivateUserController,
   getMySessionsController,
   revokeMySessionController,
+  getUserSessionsByAdminController,
+  revokeUserSessionByAdminController,
 } from './user.controller.js';
 
 const router = Router();
@@ -38,6 +41,8 @@ router.use(requireTenant);
 
 router.get('/', validate(listUsersQuerySchema), listUsersController);
 router.get('/:id', validate(userParamsSchema), getUserDetailController);
+router.get('/:id/sessions', requirePermission('user', 'view'), validate(userParamsSchema), getUserSessionsByAdminController);
+router.delete('/:id/sessions/:sessionId', requirePermission('user', 'update'), validate(userSessionParamsSchema), revokeUserSessionByAdminController);
 
 // ── Permission-gated admin routes ──
 router.patch('/:id', requirePermission('user', 'update'), validate(updateUserSchema), updateUserByAdminController);

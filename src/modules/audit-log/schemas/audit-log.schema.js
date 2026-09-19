@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { requestSchema } from "../../../schemas/request.schema.js";
 
-const auditEntityValues = ["USER", "TENANT", "PROJECT", "TASK", "COMMENT", "SESSION"];
+const auditEntityValues = ["USER", "TENANT", "PROJECT", "TASK", "COMMENT", "SESSION", "DEPARTMENT", "TASK_TYPE"];
 
 const auditActionValues = [
   "CREATE", "UPDATE", "DELETE", "INVITE", "REMOVE", "LOGIN", "LOGOUT",

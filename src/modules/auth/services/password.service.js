@@ -7,6 +7,7 @@ import { hashPassword, executePasswordAction } from "../utils/password.domain.js
 import { handlePasswordTokens } from "../utils/password.token.js";
 import { createPasswordAuditLog } from "../utils/password.audit.js";
 import { sendPasswordActionEmail } from "../utils/password.email.js";
+import { claimPendingInvites } from "../../tenant/services/tenant-invite.service.js";
 import { ApiError } from "../../../utils/api-error.js";
 
 export const passwordService = async ({
@@ -57,6 +58,11 @@ export const passwordService = async ({
   }
   if (tokens) {
     await updateLastLogin(user.id);
+  }
+
+  // C4: if this was a registration, auto-associate with any pending invites
+  if (action === PASSWORD_ACTION.SIGNUP) {
+    await claimPendingInvites(email, user.id, { ip: ipAddress });
   }
   await createPasswordAuditLog({
     action,

@@ -11,7 +11,7 @@ export const getMyProfileController = asyncHandler(async (req, res) => {
 });
 
 export const updateMyProfileController = asyncHandler(async (req, res) => {
-  const user = await userService.updateProfile(req.userId, req.body);
+  const user = await userService.updateProfile(req.userId, req.tenantId, req.body);
   return successResponse(res, {
     message: "Profile updated successfully",
     data: user,
@@ -71,6 +71,23 @@ export const getMySessionsController = asyncHandler(async (req, res) => {
 export const revokeMySessionController = asyncHandler(async (req, res) => {
   const { sessionId } = req.params;
   const result = await userService.revokeUserSession(req.userId, sessionId);
+  return successResponse(res, {
+    message: result.message,
+  });
+});
+
+export const getUserSessionsByAdminController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const sessions = await userService.getUserSessionsByAdmin(req.tenantId, id);
+  return successResponse(res, {
+    message: "Sessions retrieved successfully",
+    data: sessions,
+  });
+});
+
+export const revokeUserSessionByAdminController = asyncHandler(async (req, res) => {
+  const { id, sessionId } = req.params;
+  const result = await userService.revokeUserSessionByAdmin(req.tenantId, id, sessionId);
   return successResponse(res, {
     message: result.message,
   });

@@ -1,0 +1,71 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Backend Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma generate
+
+      - name: Run Backend Unit Tests
+        env:
+          NODE_ENV: test
+          PORT: 5000
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_SIGNUP_SECRET: ${{ secrets.JWT_SIGNUP_SECRET }}
+          JWT_PASSWORD_RESET_SECRET: ${{ secrets.JWT_PASSWORD_RESET_SECRET }}
+          CSRF_SECRET: ${{ secrets.CSRF_SECRET }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          JWT_ACCESS_EXPIRES_IN: 8h
+          JWT_REFRESH_EXPIRES_IN: 7d
+          JWT_SIGNUP_EXPIRES_IN: 10m
+          JWT_PASSWORD_RESET_EXPIRES_IN: 15m
+          SIGNUP_TOKEN_COOKIE_MAX_AGE: 600000
+          ACCESS_TOKEN_COOKIE_MAX_AGE: 28800000
+          REFRESH_TOKEN_COOKIE_MAX_AGE: 604800000
+          PASSWORD_RESET_TOKEN_COOKIE_MAX_AGE: 900000
+          OTP_LENGTH: 6
+          OTP_EXPIRES_IN: 300
+          OTP_MAX_ATTEMPTS: 5
+          MAX_RESEND: 3
+          RESEND_COOLDOWN: 60
+          RATE_LIMIT_WINDOW_MS: 900000
+          RATE_LIMIT_MAX: 100
+          BCRYPT_SALT_ROUNDS: 10
+          ALLOWED_ORIGINS: http://localhost:5173
+          FRONTEND_URL: http://localhost:5173
+          GOOGLE_CALLBACK_URL: http://localhost:5000/api/v1/auth/google/callback
+          TRUST_PROXY: 'false'
+        run: npm run test:unit

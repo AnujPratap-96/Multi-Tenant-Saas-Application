@@ -19,13 +19,25 @@ export const getUserProfile = async (userId) => {
   return mappedUser;
 };
 
-export const updateProfile = async (userId, updateData) => {
+export const updateProfile = async (userId, tenantId, updateData) => {
   const user = await userRepository.findActiveUserById(userId);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
-  const updatedUser = await userRepository.updateUser(userId, updateData);
+  // Split tenant-scoped job title from global user fields
+  const { jobTitle, ...userFields } = updateData;
+  const hasUserFields = Object.keys(userFields).length > 0;
+
+  if (hasUserFields) {
+    await userRepository.updateUser(userId, userFields);
+  }
+
+  if (jobTitle !== undefined && tenantId) {
+    await userRepository.updateMembership(tenantId, userId, { jobTitle });
+  }
+
+  const updatedUser = await userRepository.findActiveUserById(userId);
   const mappedUser = mapUserToResponse(updatedUser);
 
   await userRedis.invalidateUserCache(userId);
@@ -191,6 +203,27 @@ export const revokeUserSession = async (userId, sessionId) => {
     throw new ApiError(403, "You can only revoke your own sessions");
   }
 
+  await userRepository.revokeSession(sessionId);
+  return { message: "Session revoked successfully" };
+};
+
+export const getUserSessionsByAdmin = async (tenantId, targetUserId) => {
+  const membership = await userRepository.findMembership(tenantId, targetUserId);
+  if (!membership) {
+    throw new ApiError(404, "User not found in this tenant");
+  }
+  return await getUserSessions(targetUserId);
+};
+
+export const revokeUserSessionByAdmin = async (tenantId, targetUserId, sessionId) => {
+  const membership = await userRepository.findMembership(tenantId, targetUserId);
+  if (!membership) {
+    throw new ApiError(404, "User not found in this tenant");
+  }
+  const session = await userRepository.findSessionById(sessionId);
+  if (!session || session.userId !== targetUserId) {
+    throw new ApiError(404, "Session not found");
+  }
   await userRepository.revokeSession(sessionId);
   return { message: "Session revoked successfully" };
 };

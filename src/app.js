@@ -14,11 +14,15 @@ import tenantRoutes from "./modules/tenant/routes/tenant.routes.js";
 import tenantMembershipRoutes from "./modules/tenant/routes/tenant-membership.routes.js";
 import tenantInviteRoutes from "./modules/tenant/routes/tenant-invite.routes.js";
 import tenantSettingsRoutes from "./modules/tenant/routes/tenant-settings.routes.js";
+import departmentRoutes from "./modules/department/routes/department.routes.js";
+import directoryRoutes from "./modules/directory/routes/directory.routes.js";
 import projectRoutes from "./modules/projects/routes/project.routes.js";
 import rbacRoutes from "./modules/rbac/routes/rbac.routes.js";
 import taskRoutes from "./modules/tasks/routes/task.routes.js";
+import timeTrackingRoutes from "./modules/time-tracking/routes/time-tracking.routes.js";
 import userRoutes from "./modules/users/user.routes.js";
 import dashboardRoutes from "./modules/dashboard/routes/dashboard.routes.js";
+import notificationRoutes from "./modules/notifications/routes/notification.routes.js";
 import passport from "./lib/passport.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
@@ -103,14 +107,20 @@ app.use(`${API_PREFIX}/tenants`, tenantRoutes);
 app.use(`${API_PREFIX}/tenants`, tenantMembershipRoutes);
 app.use(`${API_PREFIX}/tenants`, tenantInviteRoutes);
 app.use(`${API_PREFIX}/tenants`, tenantSettingsRoutes);
+app.use(`${API_PREFIX}/departments`, departmentRoutes);
+app.use(`${API_PREFIX}/directory`, directoryRoutes);
 app.use(`${API_PREFIX}/users`, userRoutes);
 app.use(`${API_PREFIX}/projects`, projectRoutes);
 app.use(`${API_PREFIX}/rbac`, rbacRoutes);
 app.use(`${API_PREFIX}/tasks`, taskRoutes);
+app.use(`${API_PREFIX}/time-tracking`, timeTrackingRoutes);
 app.use(`${API_PREFIX}/dashboard`, dashboardRoutes);
+app.use(`${API_PREFIX}/notifications`, notificationRoutes);
 
 app.use(errorMiddleware);
 
 export default app;
+
+
 
 

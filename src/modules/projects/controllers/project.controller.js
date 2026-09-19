@@ -37,7 +37,7 @@ export const listProjectsController = asyncHandler(async (req, res) => {
     search: req.query.search,
     isArchived: req.query.isArchived === 'true',
   };
-  const result = await projectService.listProjects(req.tenantId, options);
+  const result = await projectService.listProjects(req.tenantId, req.userId, options);
   return successResponse(res, {
     message: "Projects retrieved successfully",
     data: result,
@@ -113,5 +113,17 @@ export const getProjectDashboardController = asyncHandler(async (req, res) => {
   return successResponse(res, {
     message: "Project dashboard retrieved successfully",
     data: result,
+  });
+});
+
+/**
+ * List project members
+ */
+export const listMembersController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const members = await projectService.listMembers(id, req.tenantId, req.userId);
+  return successResponse(res, {
+    message: "Project members retrieved successfully",
+    data: members,
   });
 });

@@ -86,19 +86,40 @@ export const createInvite = async (tenantId, data, invitedById, req) => {
     }
   }
 
-  // Generate token and create invite (email-keyed row)
+  // Generate token and persist invite + membership atomically (C3)
   const token = generateInviteToken();
   const expiresAt = inviteExpiresAt();
-  const invite = await inviteRepository.upsertInvite({
-    tenantId,
-    email,
-    role,
-    invitedById,
-    tokenHash: inviteRepository.hashToken(token),
-    expiresAt,
+  const tokenHash = inviteRepository.hashToken(token);
+
+  const { invite, membership } = await prisma.$transaction(async (tx) => {
+    const created = await tx.tenantInvite.upsert({
+      where: { tenantId_email: { tenantId, email } },
+      update: { role, tokenHash, expiresAt, status: 'PENDING', invitedById, acceptedAt: null },
+      create: { tenantId, email, role, invitedById, tokenHash, expiresAt, status: 'PENDING' },
+    });
+
+    let createdMembership = null;
+    if (user) {
+      const existing = await tx.tenantUser.findUnique({
+        where: { tenantId_userId: { tenantId, userId: user.id } },
+      });
+      if (existing) {
+        // REMOVED -> reactivate as INVITED
+        createdMembership = await tx.tenantUser.update({
+          where: { tenantId_userId: { tenantId, userId: user.id } },
+          data: { role, status: 'INVITED', invitedById, removedAt: null },
+        });
+      } else {
+        createdMembership = await tx.tenantUser.create({
+          data: { tenantId, userId: user.id, role, status: 'INVITED', invitedById },
+        });
+      }
+    }
+
+    return { invite: created, membership: createdMembership };
   });
 
-  // Store plaintext token in Redis (7-day TTL) for the accept link
+  // Store plaintext token in Redis (7-day TTL) for the accept link (best-effort cache)
   await inviteRepository.storeInviteToken(token, {
     tenantId,
     email,
@@ -107,29 +128,6 @@ export const createInvite = async (tenantId, data, invitedById, req) => {
     status: 'PENDING',
     createdAt: new Date().toISOString(),
   });
-
-  // Known emails also get a TenantUser row with INVITED status
-  let membership = null;
-  if (user) {
-    const existingMembership = await membershipRepository.findMembership(tenantId, user.id);
-    if (existingMembership) {
-      // REMOVED -> reactivate as INVITED
-      membership = await membershipRepository.updateMember(tenantId, user.id, {
-        role,
-        status: 'INVITED',
-        invitedById,
-        removedAt: null,
-      });
-    } else {
-      membership = await membershipRepository.addMember({
-        tenantId,
-        userId: user.id,
-        role,
-        status: 'INVITED',
-        invitedById,
-      });
-    }
-  }
 
   // Send invite email
   await sendInviteEmail({
@@ -319,13 +317,14 @@ export const resendInvite = async (tenantId, inviteId, userId, req) => {
  * @returns {Promise<Object>} Updated membership
  */
 export const acceptInvite = async (token, userId, req) => {
-  // Get invite from token
-  const inviteData = await inviteRepository.getInviteByToken(token);
-  if (!inviteData) {
+  // Verify token against the DB row (C2: source of truth is the hashed token)
+  const tokenHash = inviteRepository.hashToken(token);
+  const invite = await inviteRepository.findInviteByTokenHash(tokenHash);
+  if (!invite) {
     throw new ApiError(400, "Invalid or expired invite token");
   }
 
-  const { tenantId, email, role } = inviteData;
+  const { tenantId, email, role, invitedById, id: inviteId } = invite;
 
   // Verify user owns this email
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -333,47 +332,34 @@ export const acceptInvite = async (token, userId, req) => {
     throw new ApiError(403, "This invite was sent to a different email address");
   }
 
-  // Check the invite row is still pending
-  const invite = await inviteRepository.findInviteByEmail(tenantId, email);
-  if (!invite || invite.status !== 'PENDING') {
-    throw new ApiError(400, "No pending invite found for this email");
-  }
-
   if (invite.expiresAt < new Date()) {
     throw new ApiError(400, "Invite has expired");
   }
 
-  // Create or activate the membership
-  let membership = await membershipRepository.findMembership(tenantId, userId);
-  if (membership) {
-    if (membership.status === 'ACTIVE' || membership.status === 'SUSPENDED') {
+  // Create/activate membership + mark invite accepted atomically (C3)
+  const membership = await prisma.$transaction(async (tx) => {
+    let member = await tx.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId, userId } },
+    });
+    if (member && (member.status === 'ACTIVE' || member.status === 'SUSPENDED')) {
       throw new ApiError(400, "User is already a member of this tenant");
     }
-    membership = await membershipRepository.updateMember(tenantId, userId, {
-      role,
-      status: 'ACTIVE',
-      invitedById: invite.invitedById,
-      removedAt: null,
+    member = await tx.tenantUser.upsert({
+      where: { tenantId_userId: { tenantId, userId } },
+      update: { role, status: 'ACTIVE', invitedById, removedAt: null },
+      create: { tenantId, userId, role, status: 'ACTIVE', invitedById },
     });
-  } else {
-    membership = await membershipRepository.addMember({
-      tenantId,
-      userId,
-      role,
-      status: 'ACTIVE',
-      invitedById: invite.invitedById,
-    });
-  }
 
-  // Mark invite accepted
-  await inviteRepository.updateInviteStatus(invite.id, {
-    status: 'ACCEPTED',
-    acceptedAt: new Date(),
+    await tx.tenantInvite.update({
+      where: { id: inviteId },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+    });
+
+    return member;
   });
 
-  // Delete the invite token
-  await inviteRepository.deleteInviteToken(token);
-
+  // Best-effort cache cleanup
+  await inviteRepository.deleteInviteToken(token).catch(() => {});
   await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
   // Log audit
@@ -399,13 +385,13 @@ export const acceptInvite = async (token, userId, req) => {
  * @returns {Promise<Object>} Rejected membership
  */
 export const rejectInvite = async (token, userId, req) => {
-  // Get invite from token
-  const inviteData = await inviteRepository.getInviteByToken(token);
-  if (!inviteData) {
+  const tokenHash = inviteRepository.hashToken(token);
+  const invite = await inviteRepository.findInviteByTokenHash(tokenHash);
+  if (!invite) {
     throw new ApiError(400, "Invalid or expired invite token");
   }
 
-  const { tenantId, email } = inviteData;
+  const { tenantId, email, id: inviteId } = invite;
 
   // Verify user owns this email
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -413,31 +399,29 @@ export const rejectInvite = async (token, userId, req) => {
     throw new ApiError(403, "This invite was sent to a different email address");
   }
 
-  // Check the invite row is still pending
-  const invite = await inviteRepository.findInviteByEmail(tenantId, email);
-  if (!invite || invite.status !== 'PENDING') {
-    throw new ApiError(400, "No pending invite found for this email");
-  }
-
-  // Remove the INVITED membership row
-  let membership = null;
-  const existingMembership = await membershipRepository.findMembership(tenantId, userId);
-  if (existingMembership) {
-    membership = await membershipRepository.updateMember(tenantId, userId, {
-      status: 'REMOVED',
-      removedAt: new Date(),
+  // Remove the INVITED membership row + mark invite rejected atomically
+  const membership = await prisma.$transaction(async (tx) => {
+    const existing = await tx.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId, userId } },
     });
-  }
+    let updated = null;
+    if (existing && existing.status === 'INVITED') {
+      updated = await tx.tenantUser.update({
+        where: { tenantId_userId: { tenantId, userId } },
+        data: { status: 'REMOVED', removedAt: new Date() },
+      });
+    }
 
-  // Mark invite rejected
-  await inviteRepository.updateInviteStatus(invite.id, {
-    status: 'REJECTED',
-    acceptedAt: null,
+    await tx.tenantInvite.update({
+      where: { id: inviteId },
+      data: { status: 'REJECTED', acceptedAt: null },
+    });
+
+    return updated;
   });
 
-  // Delete the invite token
-  await inviteRepository.deleteInviteToken(token);
-
+  // Best-effort cache cleanup
+  await inviteRepository.deleteInviteToken(token).catch(() => {});
   await tenantRedis.invalidateMembershipCache(tenantId, userId);
 
   // Log audit
@@ -452,4 +436,56 @@ export const rejectInvite = async (token, userId, req) => {
   });
 
   return membership;
+};
+
+/**
+ * On registration, auto-associate the new user with any pending invites
+ * addressed to their email (C4). Returns the number of tenants joined.
+ * @param {string} email - user email (any case)
+ * @param {string} userId - newly created user id
+ * @param {Object} req - request object (for audit)
+ */
+export const claimPendingInvites = async (email, userId, req) => {
+  const normalized = email.toLowerCase().trim();
+  const invites = await inviteRepository.findPendingInvitesByEmail(normalized);
+  if (!invites.length) return 0;
+
+  let joined = 0;
+  for (const invite of invites) {
+    const { tenantId, role, invitedById, id: inviteId } = invite;
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.tenantUser.findUnique({
+        where: { tenantId_userId: { tenantId, userId } },
+      });
+      if (existing && (existing.status === 'ACTIVE' || existing.status === 'SUSPENDED')) {
+        // already a member -> just mark invite accepted
+      } else {
+        await tx.tenantUser.upsert({
+          where: { tenantId_userId: { tenantId, userId } },
+          update: { role, status: 'ACTIVE', invitedById, removedAt: null },
+          create: { tenantId, userId, role, status: 'ACTIVE', invitedById },
+        });
+      }
+
+      await tx.tenantInvite.update({
+        where: { id: inviteId },
+        data: { status: 'ACCEPTED', acceptedAt: new Date() },
+      });
+    });
+
+    await tenantRedis.invalidateMembershipCache(tenantId, userId).catch(() => {});
+    await logAudit({
+      action: TENANT_AUDIT_ACTIONS.INVITE_ACCEPTED,
+      entityType: 'TENANT',
+      entityId: tenantId,
+      actorUserId: userId,
+      subjectUserId: userId,
+      tenantId,
+      newValue: { role, claimedOnRegistration: true },
+      req,
+    });
+    joined += 1;
+  }
+
+  return joined;
 };

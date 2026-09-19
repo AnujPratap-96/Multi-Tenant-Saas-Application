@@ -19,7 +19,10 @@ enum Role {
 enum TaskStatus {
   TODO
   IN_PROGRESS
+  IN_REVIEW
+  BLOCKED
   DONE
+  CANCELLED
 }
 
 enum TaskPriority {
@@ -38,6 +41,11 @@ model User {
   // 👤 Identity
   firstName             String?
   lastName              String?
+  displayName           String?
+  jobTitle              String?
+  bio                   String?
+  timezone              String?
+  locale                String?
   avatarUrl             String?
   emailVerified         Boolean                @default(false)
   isActive              Boolean                @default(true)
@@ -60,6 +68,15 @@ model User {
   tenantOwnerships      TenantOwnership[]
   sessions              AuthSession[]
   tenantInvitesSent     TenantInvite[]         @relation("TenantInviteInviter")
+  managedDepartments    Department[]           @relation("DepartmentManager")
+  departments           DepartmentMember[]
+  taskTypes             TaskType[]
+  timeEntries           TimeEntry[]
+  assignedByTasks       TaskAssignee[]        @relation("TaskAssigner")
+  commentMentions       TaskCommentMention[]
+  notifications         Notification[]
+  deadlineChanges       TaskDeadlineHistory[]
+  taskActivities        TaskActivity[]
 }
 
 //////////////////////
@@ -84,6 +101,7 @@ model Tenant {
   tenantUserPermissions TenantUserPermission[]
   tenantInvites         TenantInvite[]
   settings              TenantSettings?
+  departments           Department[]
 }
 
 model TenantOwnership {
@@ -107,12 +125,16 @@ model TenantUser {
   status      TenantUserStatus @default(ACTIVE)
   invitedById String?
   invitedBy   User?            @relation("TenantUserInviter", fields: [invitedById], references: [id])
+  homeDepartmentId String?
+  homeDepartment Department?    @relation("UserHomeDepartment", fields: [homeDepartmentId], references: [id])
+  jobTitle   String?
   joinedAt    DateTime         @default(now())
   removedAt   DateTime?
   tenant      Tenant           @relation(fields: [tenantId], references: [id])
   user        User             @relation(fields: [userId], references: [id])
 
   @@id([tenantId, userId])
+  @@index([homeDepartmentId])
 }
 
 enum TenantUserStatus {
@@ -176,6 +198,7 @@ model Project {
   deletedAt   DateTime?
   tenant      Tenant          @relation(fields: [tenantId], references: [id])
   members     ProjectMember[]
+  departments ProjectDepartment[]
   tasks       Task[]
 }
 
@@ -198,6 +221,94 @@ enum ProjectRole {
   OWNER
   MAINTAINER
   MEMBER
+}
+
+////////////////////////
+// DEPARTMENTS (tenant subdivision, isolation boundary)
+////////////////////////
+enum DepartmentRole {
+  MANAGER
+  LEAD
+  MEMBER
+}
+
+model Department {
+  id          String             @id @default(uuid())
+  tenantId    String
+  name        String
+  managerId   String
+  description String?
+  createdById String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
+  manager     User               @relation("DepartmentManager", fields: [managerId], references: [id])
+  members     DepartmentMember[]
+  homeMembers TenantUser[]       @relation("UserHomeDepartment")
+  taskTypes   TaskType[]
+  projectDepartments ProjectDepartment[]
+  taskDepartments    TaskDepartment[]
+
+  @@index([tenantId])
+  @@index([managerId])
+  @@unique([tenantId, name])
+}
+
+model DepartmentMember {
+  departmentId String
+  userId       String
+  role         DepartmentRole @default(MEMBER)
+  addedAt      DateTime      @default(now())
+  removedAt    DateTime?
+  department   Department     @relation(fields: [departmentId], references: [id])
+  user         User           @relation(fields: [userId], references: [id])
+
+  @@id([departmentId, userId])
+  @@index([userId])
+}
+
+////////////////////////
+// TASK TYPES (categorization; departments decide assignee eligibility)
+////////////////////////
+model TaskType {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  departmentId String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  department  Department? @relation(fields: [departmentId], references: [id])
+  createdBy   User?       @relation(fields: [createdById], references: [id])
+  tasks       Task[]
+
+  @@index([tenantId])
+  @@unique([tenantId, name])
+}
+
+////////////////////////
+// RESOURCE <-> DEPARTMENT JUNCTIONS (multi-department)
+////////////////////////
+model ProjectDepartment {
+  projectId    String
+  departmentId String
+  project      Project    @relation(fields: [projectId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  @@id([projectId, departmentId])
+  @@index([departmentId])
+}
+
+model TaskDepartment {
+  taskId       String
+  departmentId String
+  task         Task       @relation(fields: [taskId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  @@id([taskId, departmentId])
+  @@index([departmentId])
 }
 
 //////////////////////
@@ -224,6 +335,19 @@ model Task {
   project     Project        @relation(fields: [projectId], references: [id])
   assignees   TaskAssignee[]
   comments    TaskComment[]
+  taskTypeId  String?
+  taskType    TaskType?       @relation(fields: [taskTypeId], references: [id])
+  departments TaskDepartment[]
+  // Extended lifecycle + planning (Phase 2)
+  initialDueDate  DateTime?
+  startedAt       DateTime?
+  estimatedMinutes Int?
+  blockedReason    String?
+  cancelledReason  String?
+  reopenedAt       DateTime?
+  timeEntries      TimeEntry[]
+  deadlineHistory  TaskDeadlineHistory[]
+  activities       TaskActivity[]
 }
 
 //////////////////////
@@ -232,8 +356,11 @@ model Task {
 model TaskAssignee {
   taskId     String
   userId     String
+  assignedById String?
+  assignedBy  User?     @relation("TaskAssigner", fields: [assignedById], references: [id])
   assignedAt DateTime  @default(now())
   removedAt  DateTime?
+  reason     String?
   task       Task      @relation(fields: [taskId], references: [id])
   user       User      @relation(fields: [userId], references: [id])
 
@@ -247,12 +374,111 @@ model TaskComment {
   id        String    @id @default(uuid())
   taskId    String
   userId    String
+  parentId  String?
   comment   String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  editedAt  DateTime?
   deletedAt DateTime?
-  task      Task      @relation(fields: [taskId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+  task      Task       @relation(fields: [taskId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  parent    TaskComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   TaskComment[] @relation("CommentReplies")
+  mentions   TaskCommentMention[]
+
+  @@index([parentId])
+}
+
+model TaskCommentMention {
+  taskCommentId String
+  userId        String
+  taskComment    TaskComment @relation(fields: [taskCommentId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@id([taskCommentId, userId])
+  @@index([userId])
+}
+
+////////////////////////
+// TIME TRACKING
+////////////////////////
+model TimeEntry {
+  id          String   @id @default(uuid())
+  tenantId    String
+  taskId      String
+  userId      String
+  startedAt   DateTime
+  endedAt     DateTime?
+  durationMinutes Int?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  task        Task     @relation(fields: [taskId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([taskId])
+  @@index([userId])
+}
+
+////////////////////////
+// TASK DEADLINE HISTORY
+////////////////////////
+model TaskDeadlineHistory {
+  id            String   @id @default(uuid())
+  tenantId      String
+  taskId        String
+  previousDueDate DateTime?
+  newDueDate    DateTime?
+  changedById   String?
+  reason        String?
+  createdAt     DateTime @default(now())
+  task          Task     @relation(fields: [taskId], references: [id])
+  changedBy     User?    @relation(fields: [changedById], references: [id])
+
+  @@index([taskId])
+}
+
+////////////////////////
+// TASK ACTIVITY TIMELINE (user-facing)
+////////////////////////
+model TaskActivity {
+  id        String   @id @default(uuid())
+  tenantId  String
+  taskId    String
+  actorId   String?
+  type      String
+  fromValue String?
+  toValue   String?
+  reason    String?
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id])
+  actor     User?    @relation(fields: [actorId], references: [id])
+
+  @@index([tenantId])
+  @@index([taskId])
+  @@index([createdAt])
+}
+
+////////////////////////
+// NOTIFICATIONS
+////////////////////////
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  type      String
+  entityType String?
+  entityId  String?
+  message   String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, userId])
+  @@index([userId, readAt])
 }
 
 //////////////////////
@@ -335,6 +561,8 @@ enum AuditEntity {
   TASK
   COMMENT
   SESSION
+  DEPARTMENT
+  TASK_TYPE
 }
 
 //////////////////////

@@ -5,16 +5,46 @@ import * as projectRepository from "../repositories/project.repository.js";
 import { PROJECT_AUDIT_ACTIONS, PROJECT_ROLES } from "../constants/project.constants.js";
 import * as projectRedis from "../redis/project.redis.js";
 import * as tenantMembershipRepository from "../../tenant/repositories/tenant-membership.repository.js";
+import * as departmentAuth from "../../department/services/department-auth.service.js";
+import prisma from "../../../lib/prisma.js";
 
 /**
  * Create a new project
  */
 export const createProject = async (data, tenantId, userId, req) => {
-  const project = await projectRepository.createProjectWithOwner({
-    ...data,
-    tenantId,
-    createdById: userId,
+  const { departmentIds } = data;
+  if (!departmentIds || !departmentIds.length) {
+    throw new ApiError(400, "departmentIds is required to create a project");
+  }
+  const depts = await prisma.department.findMany({
+    where: { id: { in: departmentIds }, tenantId, deletedAt: null },
+    select: { id: true },
   });
+  if (depts.length !== departmentIds.length) {
+    throw new ApiError(400, "One or more departments are invalid");
+  }
+  if (!(await departmentAuth.canCreateProject(tenantId, userId, departmentIds))) {
+    throw new ApiError(403, "Only tenant admins or the department manager can create a project");
+  }
+
+  // Transactional: project + owner membership + department links
+  const project = await prisma.$transaction(async (tx) => {
+    const p = await tx.project.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        tenantId,
+        createdById: userId,
+        members: { create: { userId, role: "OWNER" } },
+      },
+    });
+    await tx.projectDepartment.createMany({
+      data: departmentIds.map((departmentId) => ({ projectId: p.id, departmentId })),
+    });
+    return p;
+  });
+
+  const fullProject = await projectRepository.findProjectById(project.id, tenantId);
 
   // Invalidate list cache
   await projectRedis.invalidateTenantProjectsCache(tenantId);
@@ -25,11 +55,11 @@ export const createProject = async (data, tenantId, userId, req) => {
     entityId: project.id,
     actorUserId: userId,
     tenantId,
-    newValue: data,
+    newValue: { ...data, departmentIds },
     req,
   });
 
-  return project;
+  return fullProject;
 };
 
 /**
@@ -53,27 +83,34 @@ export const getProject = async (projectId, tenantId, userId) => {
     await projectRedis.setCachedProject(projectId, project);
   }
 
-  // Check if user is a member
-  const membership = await projectRepository.getProjectMembership(projectId, userId);
-  if (!membership) {
-    throw new ApiError(403, "You are not a member of this project");
+  // Department-aware visibility: member, dept manager, or admin
+  const visible = await departmentAuth.canViewProject(tenantId, userId, project);
+  if (!visible) {
+    throw new ApiError(404, "Project not found");
   }
+
+  const membership = await projectRepository.getProjectMembership(projectId, userId);
 
   return {
     ...project,
-    userRole: membership.role,
+    userRole: membership?.role,
   };
 };
 
 /**
  * List projects
  */
-export const listProjects = async (tenantId, options) => {
+export const listProjects = async (tenantId, userId, options) => {
   // Try to get from cache
   const cachedList = await projectRedis.getCachedProjectList(tenantId, options);
   if (cachedList) return cachedList;
 
-  const result = await projectRepository.listProjectsByTenant(tenantId, options);
+  const isAdmin = await departmentAuth.isOrgAdmin(tenantId, userId);
+  const scoped = isAdmin
+    ? null
+    : { userId, managedDeptIds: await departmentAuth.getUserManagedDepartmentIds(tenantId, userId) };
+
+  const result = await projectRepository.listProjectsByTenant(tenantId, { ...options, scoped });
   
   // Save to cache
   await projectRedis.setCachedProjectList(tenantId, options, result);
@@ -306,4 +343,12 @@ export const getProjectDashboard = async (projectId, tenantId, userId) => {
 
   const stats = await projectRepository.getProjectDashboardStats(projectId, tenantId);
   return { project, stats, userRole: membership.role };
+};
+
+/**
+ * List project members
+ */
+export const listMembers = async (projectId, tenantId, userId) => {
+  await getProject(projectId, tenantId, userId);
+  return await projectRepository.listProjectMembers(projectId);
 };

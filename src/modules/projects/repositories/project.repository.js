@@ -48,14 +48,22 @@ export const findProjectById = async (id, tenantId) => {
           },
         },
       },
+      departments: { select: { departmentId: true } },
     },
+  });
+};
+
+export const createProjectDepartments = async (projectId, departmentIds) => {
+  if (!departmentIds || !departmentIds.length) return [];
+  return await prisma.projectDepartment.createMany({
+    data: departmentIds.map((departmentId) => ({ projectId, departmentId })),
   });
 };
 
 /**
  * List projects for a tenant
  */
-export const listProjectsByTenant = async (tenantId, { page = 1, limit = 20, search = '', isArchived = false }) => {
+export const listProjectsByTenant = async (tenantId, { page = 1, limit = 20, search = '', isArchived = false, scoped = null }) => {
   const skip = (page - 1) * limit;
   const where = {
     tenantId,
@@ -70,6 +78,14 @@ export const listProjectsByTenant = async (tenantId, { page = 1, limit = 20, sea
     ];
   }
 
+  // Department-scoped visibility (non-admin): member of project OR manager of one of its departments
+  if (scoped && scoped.managedDeptIds && scoped.managedDeptIds.length) {
+    where.OR = [
+      { members: { some: { userId: scoped.userId, removedAt: null } } },
+      { departments: { some: { departmentId: { in: scoped.managedDeptIds } } } },
+    ];
+  }
+
   const [projects, total] = await Promise.all([
     prisma.project.findMany({
       where,
@@ -80,6 +96,7 @@ export const listProjectsByTenant = async (tenantId, { page = 1, limit = 20, sea
         _count: {
           select: { members: true, tasks: true },
         },
+        departments: { select: { departmentId: true } },
       },
     }),
     prisma.project.count({ where }),
@@ -197,4 +214,22 @@ export const getProjectDashboardStats = async (projectId, tenantId) => {
     taskStats,
     totalTasks: Object.values(taskStats).reduce((a, b) => a + b, 0),
   };
+};
+
+/**
+ * List active project members with user info
+ */
+export const listProjectMembers = async (projectId) => {
+  return await prisma.projectMember.findMany({
+    where: {
+      projectId,
+      removedAt: null,
+    },
+    include: {
+      user: {
+        select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true },
+      },
+    },
+    orderBy: { addedAt: 'asc' },
+  });
 };

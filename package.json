@@ -10,9 +10,6 @@
     "test:watch": "vitest",
     "test:unit": "vitest run tests/unit"
   },
-  "prisma": {
-    "seed": "node prisma/seed.js"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",

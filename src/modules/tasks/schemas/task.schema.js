@@ -5,12 +5,14 @@ import { TASK_STATUS, TASK_PRIORITY } from "../constants/task.constants.js";
 
 export const createTaskSchema = requestSchema({
   body: z.object({
-    projectId: z.string().uuid("Invalid project ID"),
+    projectId: z.string().uuid("Invalid project ID").optional(),
     title: z.string().trim().min(3).max(200),
     description: z.string().trim().max(2000).optional(),
     status: z.enum([TASK_STATUS.TODO, TASK_STATUS.IN_PROGRESS, TASK_STATUS.DONE]).optional(),
     priority: z.enum([TASK_PRIORITY.LOW, TASK_PRIORITY.MEDIUM, TASK_PRIORITY.HIGH]).optional(),
     dueDate: z.string().datetime().optional(),
+    taskTypeId: z.string().uuid("Invalid task type ID").optional(),
+    departmentIds: z.array(z.string().uuid()).optional(),
   }),
 });
 
@@ -48,6 +50,21 @@ export const addAssigneeSchema = requestSchema({
 });
 
 export const createCommentSchema = requestSchema({
+  params: z.object({
+    id: z.string().uuid("Invalid task ID"),
+  }),
+  body: z.object({
+    comment: z.string().trim().min(1).max(1000),
+    parentId: z.string().uuid("Invalid parent comment ID").optional(),
+    mentionIds: z.array(z.string().uuid()).max(50).optional(),
+  }),
+});
+
+export const updateCommentSchema = requestSchema({
+  params: z.object({
+    id: z.string().uuid("Invalid task ID"),
+    commentId: z.string().uuid("Invalid comment ID"),
+  }),
   body: z.object({
     comment: z.string().trim().min(1).max(1000),
   }),
@@ -57,5 +74,25 @@ export const commentParamsSchema = requestSchema({
   params: z.object({
     id: z.string().uuid("Invalid task ID"),
     commentId: z.string().uuid("Invalid comment ID"),
+  }),
+});
+
+export const removeAssigneeSchema = requestSchema({
+  params: z.object({
+    id: z.string().uuid("Invalid task ID"),
+  }),
+  body: z.object({
+    userId: z.string().uuid("Invalid user ID"),
+    reason: z.string().max(500).optional(),
+  }),
+});
+
+export const taskActivitySchema = requestSchema({
+  params: z.object({
+    id: z.string().uuid("Invalid task ID"),
+  }),
+  query: z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(30),
   }),
 });

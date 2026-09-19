@@ -89,12 +89,74 @@ export const addAssigneeController = asyncHandler(async (req, res) => {
  */
 export const addCommentController = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { comment } = req.body;
-  const newComment = await taskService.addComment(id, req.tenantId, comment, req.userId, req);
+  const { comment, parentId, mentionIds } = req.body;
+  const newComment = await taskService.addComment(
+    id,
+    req.tenantId,
+    { comment, parentId, mentionIds },
+    req.userId,
+    req
+  );
   return successResponse(res, {
     statusCode: 201,
     message: "Comment added successfully",
     data: newComment,
+  });
+});
+
+/**
+ * Edit Comment
+ */
+export const updateCommentController = asyncHandler(async (req, res) => {
+  const { id, commentId } = req.params;
+  const { comment } = req.body;
+  const updated = await taskService.updateComment(
+    id,
+    commentId,
+    req.tenantId,
+    req.userId,
+    comment,
+    req
+  );
+  return successResponse(res, {
+    message: "Comment updated successfully",
+    data: updated,
+  });
+});
+
+/**
+ * Remove Assignee
+ */
+export const removeAssigneeController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { userId: targetUserId, reason } = req.body;
+  const result = await taskService.removeAssignee(
+    id,
+    req.tenantId,
+    targetUserId,
+    req.userId,
+    reason,
+    req
+  );
+  return successResponse(res, {
+    message: "Assignee removed successfully",
+    data: result,
+  });
+});
+
+/**
+ * Get Task Activity Timeline
+ */
+export const getTaskActivityController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const options = {
+    page: req.query.page ? parseInt(req.query.page) : 1,
+    limit: req.query.limit ? parseInt(req.query.limit) : 30,
+  };
+  const result = await taskService.getTaskActivity(id, req.tenantId, req.userId, options);
+  return successResponse(res, {
+    message: "Task activity retrieved successfully",
+    data: result,
   });
 });
 
@@ -118,6 +180,24 @@ export const deleteCommentController = asyncHandler(async (req, res) => {
   const result = await taskService.deleteComment(id, commentId, req.tenantId, req.userId, req);
   return successResponse(res, {
     message: "Comment deleted successfully",
+    data: result,
+  });
+});
+
+/**
+ * List tasks assigned to the current user (across visible departments/projects)
+ */
+export const listMyTasksController = asyncHandler(async (req, res) => {
+  const options = {
+    page: req.query.page ? parseInt(req.query.page) : 1,
+    limit: req.query.limit ? parseInt(req.query.limit) : 20,
+    status: req.query.status,
+    priority: req.query.priority,
+    search: req.query.search,
+  };
+  const result = await taskService.listMyTasks(req.tenantId, req.userId, options);
+  return successResponse(res, {
+    message: "My tasks retrieved successfully",
     data: result,
   });
 });

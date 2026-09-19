@@ -9,11 +9,16 @@ export async function setup() {
     try {
       await Promise.race([
         redisClient.connect(),
-        new Promise((resolve) => setTimeout(resolve, 3000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Redis connect timeout')), 3000)),
       ]);
       connected = redisClient.isReady;
     } catch (error) {
       console.warn('Redis connect failed in tests:', error.message);
+      try {
+        await redisClient.disconnect();
+      } catch {
+        /* ignore */
+      }
     }
   }
 }
@@ -21,7 +26,13 @@ export async function setup() {
 await setup();
 
 afterAll(async () => {
-  if (redisClient.isReady) {
-    await redisClient.quit();
+  try {
+    if (redisClient.isReady) {
+      await redisClient.quit();
+    } else if (redisClient.isOpen) {
+      await redisClient.disconnect();
+    }
+  } catch {
+    /* ignore */
   }
 });

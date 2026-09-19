@@ -165,3 +165,36 @@ export const updateInviteStatus = async (inviteId, data) => {
     data,
   });
 };
+
+/**
+ * Find a PENDING, non-expired invite by its hashed token (DB source of truth, C2).
+ * @param {string} tokenHash - sha256(token)
+ */
+export const findInviteByTokenHash = async (tokenHash) => {
+  return prisma.tenantInvite.findFirst({
+    where: {
+      tokenHash,
+      status: "PENDING",
+      expiresAt: { gt: new Date() },
+    },
+    include: {
+      invitedBy: {
+        select: { id: true, email: true, firstName: true, lastName: true },
+      },
+    },
+  });
+};
+
+/**
+ * Find all PENDING, non-expired invites for an email (used to auto-associate on registration, C4).
+ * @param {string} email - normalized (lowercase) email
+ */
+export const findPendingInvitesByEmail = async (email) => {
+  return prisma.tenantInvite.findMany({
+    where: {
+      email,
+      status: "PENDING",
+      expiresAt: { gt: new Date() },
+    },
+  });
+};
