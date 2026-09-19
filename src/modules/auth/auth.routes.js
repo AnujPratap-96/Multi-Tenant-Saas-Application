@@ -222,7 +222,7 @@ const googleAuthHandler = (req, res, next) => {
   const state = crypto.randomBytes(16).toString("hex");
   res.cookie(oauthStateCookie, state, {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
     secure: env.NODE_ENV === "production",
     maxAge: 10 * 60 * 1000,
   });

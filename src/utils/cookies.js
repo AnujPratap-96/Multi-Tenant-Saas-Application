@@ -3,7 +3,7 @@ import { env } from "../config/env.js";
 const getBaseOptions = () => ({
   httpOnly: true,
   secure: env.NODE_ENV === "production",
-  sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+  sameSite: env.NODE_ENV === "production" ? "none" : "lax",
 });
 
 /**
@@ -47,8 +47,9 @@ export const setPasswordResetCookie = (res, token) => {
  * ❌ Clear Auth Cookies
  */
 export const clearAuthCookies = (res) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
-  res.clearCookie("passwordResetToken");
-  res.clearCookie("signupToken");
+  const baseOptions = getBaseOptions();
+  res.clearCookie("accessToken", baseOptions);
+  res.clearCookie("refreshToken", baseOptions);
+  res.clearCookie("passwordResetToken", baseOptions);
+  res.clearCookie("signupToken", baseOptions);
 };

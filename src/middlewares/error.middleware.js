@@ -2,6 +2,8 @@ import logger from "../lib/logger.js";
 import { ApiError, mapZodErrors } from "../utils/api-error.js";
 import { errorResponse } from "../utils/response.js";
 import { ZodError } from "zod";
+import { invalidCsrfTokenError } from "./csrf.middleware.js";
+
 export default function errorMiddleware(err, req, res, next) {
   if (!err) {
     return next();
@@ -10,8 +12,9 @@ export default function errorMiddleware(err, req, res, next) {
   if (err instanceof ZodError) {
     const mappedError = mapZodErrors(err);
     error = new ApiError(400, "Validation failed", mappedError);
-  } 
-  else if (!(err instanceof ApiError)) {
+  } else if (err === invalidCsrfTokenError || err.code === "EBADCSRFTOKEN") {
+    error = new ApiError(403, "Invalid or missing CSRF token");
+  } else if (!(err instanceof ApiError)) {
     error = new ApiError(500, "Internal Server Error");
   }
   const logLevel = error.statusCode >= 500 ? 'error' : 'warn';
