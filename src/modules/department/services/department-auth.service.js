@@ -4,10 +4,20 @@ import prisma from "../../../lib/prisma.js";
 import * as departmentRepository from "../repositories/department.repository.js";
 
 export const isOrgAdmin = async (tenantId, userId) => {
-  const membership = await prisma.tenantUser.findUnique({
-    where: { tenantId_userId: { tenantId, userId } },
-    select: { role: true, status: true },
-  });
+  if (!tenantId || !userId || typeof tenantId !== "string" || typeof userId !== "string") {
+    return false;
+  }
+  const [membership, tenant] = await Promise.all([
+    prisma.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId, userId } },
+      select: { role: true, status: true },
+    }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { ownerUserId: true },
+    }),
+  ]);
+  if (tenant && tenant.ownerUserId === userId) return true;
   return !!membership && membership.status === "ACTIVE" && membership.role === "ADMIN";
 };
 
@@ -66,10 +76,13 @@ export const canCreateTask = async (tenantId, userId, departmentIds = []) => {
 };
 
 export const canViewTask = async (tenantId, userId, task, project = null) => {
+  if (!tenantId || !userId || !task) return false;
   if (await isOrgAdmin(tenantId, userId)) return true;
-  if (task.assignees?.some((a) => a.userId === userId && !a.removedAt)) return true;
-  const deptIds = (task.departments || []).map((d) => d.departmentId);
-  if (await userManagesAnyOf(tenantId, userId, deptIds)) return true;
+  if (task.createdById === userId) return true;
+  if (task.assignees?.some((a) => (a.userId === userId || a.user?.id === userId) && !a.removedAt)) return true;
+  const deptIds = (task.departments || []).map((d) => d.departmentId || d.department?.id || d.id).filter(Boolean);
+  if (deptIds.length && (await userManagesAnyOf(tenantId, userId, deptIds))) return true;
+  if (deptIds.length && (await userIsMemberOfAny(tenantId, userId, deptIds))) return true;
   if (project && (await canViewProject(tenantId, userId, project))) return true;
   return false;
 };

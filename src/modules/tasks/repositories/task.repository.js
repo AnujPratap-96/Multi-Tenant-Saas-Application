@@ -86,8 +86,10 @@ export const listMyTasks = async (tenantId, userId, { page = 1, limit = 20, stat
   };
 };
 
-export const listTasksByProject = async (projectId, tenantId, { page = 1, limit = 20, status, priority, search }) => {
-  const skip = (page - 1) * limit;
+export const listTasksByProject = async (projectId, tenantId, { page = 1, limit = 20, status, priority, search } = {}) => {
+  const pageNum = Number.isFinite(page) && page > 0 ? page : 1;
+  const limitNum = Number.isFinite(limit) && limit > 0 ? limit : 20;
+  const skip = (pageNum - 1) * limitNum;
   const where = {
     projectId,
     tenantId,
@@ -107,7 +109,7 @@ export const listTasksByProject = async (projectId, tenantId, { page = 1, limit 
     prisma.task.findMany({
       where,
       skip,
-      take: limit,
+      take: limitNum,
       orderBy: { updatedAt: 'desc' },
       include: {
         assignees: {

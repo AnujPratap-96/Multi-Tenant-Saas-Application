@@ -8,41 +8,67 @@ const buildProjectKey = (id) => `${PROJECT_CACHE_PREFIX}${id}`;
 const buildTenantProjectsKey = (tenantId) => `${TENANT_PROJECTS_CACHE_PREFIX}${tenantId}`;
 
 export const getCachedProject = async (id) => {
-  const key = buildProjectKey(id);
-  const data = await redisClient.get(key);
-  return data ? JSON.parse(data) : null;
+  try {
+    const key = buildProjectKey(id);
+    const data = await redisClient.get(key);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
 };
 
 export const setCachedProject = async (id, projectData) => {
-  const key = buildProjectKey(id);
-  await redisClient.set(key, JSON.stringify(projectData), { EX: PROJECT_TTL });
+  try {
+    const key = buildProjectKey(id);
+    await redisClient.set(key, JSON.stringify(projectData), { EX: PROJECT_TTL });
+  } catch {
+    // ignore cache failure
+  }
 };
 
-export const getCachedProjectList = async (tenantId, queryParams) => {
-  const key = `${buildTenantProjectsKey(tenantId)}:${JSON.stringify(queryParams)}`;
-  const data = await redisClient.get(key);
-  return data ? JSON.parse(data) : null;
+export const getCachedProjectList = async (tenantId, userId, queryParams) => {
+  try {
+    const userScope = userId || "all";
+    const key = `${buildTenantProjectsKey(tenantId)}:${userScope}:${JSON.stringify(queryParams)}`;
+    const data = await redisClient.get(key);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
 };
 
-export const setCachedProjectList = async (tenantId, queryParams, projectsData) => {
-  const key = `${buildTenantProjectsKey(tenantId)}:${JSON.stringify(queryParams)}`;
-  await redisClient.set(key, JSON.stringify(projectsData), { EX: PROJECT_TTL });
+export const setCachedProjectList = async (tenantId, userId, queryParams, projectsData) => {
+  try {
+    const userScope = userId || "all";
+    const key = `${buildTenantProjectsKey(tenantId)}:${userScope}:${JSON.stringify(queryParams)}`;
+    await redisClient.set(key, JSON.stringify(projectsData), { EX: PROJECT_TTL });
+  } catch {
+    // ignore cache failure
+  }
 };
 
 export const invalidateProjectCache = async (id, tenantId) => {
-  const projectKey = buildProjectKey(id);
-  await redisClient.del(projectKey);
-  
-  // Also invalidate lists for the tenant
-  if (tenantId) {
-    await invalidateTenantProjectsCache(tenantId);
+  try {
+    const projectKey = buildProjectKey(id);
+    await redisClient.del(projectKey);
+    
+    // Also invalidate lists for the tenant
+    if (tenantId) {
+      await invalidateTenantProjectsCache(tenantId);
+    }
+  } catch {
+    // ignore cache failure
   }
 };
 
 export const invalidateTenantProjectsCache = async (tenantId) => {
-  const pattern = `${TENANT_PROJECTS_CACHE_PREFIX}${tenantId}:*`;
-  const keys = await redisClient.keys(pattern);
-  if (keys.length > 0) {
-    await redisClient.del(keys);
+  try {
+    const pattern = `${TENANT_PROJECTS_CACHE_PREFIX}${tenantId}:*`;
+    const keys = await redisClient.keys(pattern);
+    if (keys && keys.length > 0) {
+      await redisClient.del(keys);
+    }
+  } catch {
+    // ignore cache failure
   }
 };

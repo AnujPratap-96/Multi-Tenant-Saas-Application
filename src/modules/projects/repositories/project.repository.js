@@ -71,19 +71,33 @@ export const listProjectsByTenant = async (tenantId, { page = 1, limit = 20, sea
     isArchived,
   };
 
+  const andConditions = [];
+
   if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
-    ];
+    andConditions.push({
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ],
+    });
   }
 
-  // Department-scoped visibility (non-admin): member of project OR manager of one of its departments
-  if (scoped && scoped.managedDeptIds && scoped.managedDeptIds.length) {
-    where.OR = [
+  // Department-scoped visibility (non-admin): member of project, creator, OR manager of one of its departments
+  if (scoped) {
+    const scopeOr = [
       { members: { some: { userId: scoped.userId, removedAt: null } } },
-      { departments: { some: { departmentId: { in: scoped.managedDeptIds } } } },
+      { createdById: scoped.userId },
     ];
+    if (scoped.managedDeptIds && scoped.managedDeptIds.length) {
+      scopeOr.push({
+        departments: { some: { departmentId: { in: scoped.managedDeptIds } } },
+      });
+    }
+    andConditions.push({ OR: scopeOr });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
   }
 
   const [projects, total] = await Promise.all([

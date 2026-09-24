@@ -102,7 +102,7 @@ export const getProject = async (projectId, tenantId, userId) => {
  */
 export const listProjects = async (tenantId, userId, options) => {
   // Try to get from cache
-  const cachedList = await projectRedis.getCachedProjectList(tenantId, options);
+  const cachedList = await projectRedis.getCachedProjectList(tenantId, userId, options);
   if (cachedList) return cachedList;
 
   const isAdmin = await departmentAuth.isOrgAdmin(tenantId, userId);
@@ -113,7 +113,7 @@ export const listProjects = async (tenantId, userId, options) => {
   const result = await projectRepository.listProjectsByTenant(tenantId, { ...options, scoped });
   
   // Save to cache
-  await projectRedis.setCachedProjectList(tenantId, options, result);
+  await projectRedis.setCachedProjectList(tenantId, userId, options, result);
   
   return result;
 };

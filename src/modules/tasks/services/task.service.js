@@ -43,11 +43,11 @@ const checkProjectAccess = async (projectId, tenantId, userId) => {
   if (!project) {
     throw new ApiError(404, "Project not found");
   }
-  const membership = await projectRepository.getProjectMembership(projectId, userId);
-  if (!membership) {
+  const canAccess = await departmentAuth.canViewProject(tenantId, userId, project);
+  if (!canAccess) {
     throw new ApiError(403, "You do not have access to this project");
   }
-  return membership;
+  return project;
 };
 
 /**
@@ -82,8 +82,11 @@ export const createTask = async (data, tenantId, userId, req) => {
       throw new ApiError(403, "You can only create tasks in departments you belong to");
     }
   } else if (projectId) {
-    if (!(await departmentAuth.canViewProject(tenantId, userId, project))) {
-      throw new ApiError(403, "You do not have access to this project");
+    const isAdmin = await departmentAuth.isOrgAdmin(tenantId, userId);
+    const membership = await projectRepository.getProjectMembership(projectId, userId);
+    const canCreate = isAdmin || (membership && (membership.role === "OWNER" || membership.role === "MAINTAINER"));
+    if (!canCreate) {
+      throw new ApiError(403, "Insufficient permissions to create tasks in this project");
     }
   }
 

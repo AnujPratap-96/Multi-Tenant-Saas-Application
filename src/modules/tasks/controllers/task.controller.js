@@ -33,8 +33,8 @@ export const getTaskController = asyncHandler(async (req, res) => {
 export const listTasksController = asyncHandler(async (req, res) => {
   const { projectId, page, limit, status, priority, search } = req.query;
   const options = {
-    page: parseInt(page),
-    limit: parseInt(limit),
+    page: page ? parseInt(page, 10) : 1,
+    limit: limit ? parseInt(limit, 10) : 20,
     status,
     priority,
     search,

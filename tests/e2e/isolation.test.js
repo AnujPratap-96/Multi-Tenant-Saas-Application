@@ -14,6 +14,17 @@ describe('Multi-Tenant Isolation (E2E)', () => {
     await cleanup();
   });
 
+  const createTestTenant = async (args) => {
+    const data = args?.data || args;
+    const { name, slug } = data;
+    const owner = await prisma.user.create({
+      data: { email: `owner-${slug}-${Date.now()}-${Math.random()}@test.com`, password: 'hash' },
+    });
+    return prisma.tenant.create({
+      data: { name, slug, ownerUserId: owner.id },
+    });
+  };
+
   const setupUser = async (tenant, email, role = 'ADMIN') => {
     const user = await prisma.user.create({ data: { email, password: 'hash' } });
     await prisma.tenantUser.create({ data: { tenantId: tenant.id, userId: user.id, role } });
@@ -23,13 +34,13 @@ describe('Multi-Tenant Isolation (E2E)', () => {
 
   it('should strictly prevent cross-tenant project access', async () => {
     // 1. Setup Tenant A & User A
-    const tenantA = await prisma.tenant.create({ data: { name: 'Tenant A', slug: 'tenant-a' } });
+    const tenantA = await createTestTenant({ name: 'Tenant A', slug: 'tenant-a' });
     const userA = await prisma.user.create({ data: { email: 'userA@a.com', password: 'hash' } });
     await prisma.tenantUser.create({ data: { tenantId: tenantA.id, userId: userA.id, role: 'ADMIN' } });
     const { accessToken: tokenA } = await generateAuthToken({ userId: userA.id, email: userA.email });
 
     // 2. Setup Tenant B & User B & Project B
-    const tenantB = await prisma.tenant.create({ data: { name: 'Tenant B', slug: 'tenant-b' } });
+    const tenantB = await createTestTenant({ data: { name: 'Tenant B', slug: 'tenant-b' } });
     const userB = await prisma.user.create({ data: { email: 'userB@b.com', password: 'hash' } });
     await prisma.tenantUser.create({ data: { tenantId: tenantB.id, userId: userB.id, role: 'ADMIN' } });
 
@@ -57,8 +68,8 @@ describe('Multi-Tenant Isolation (E2E)', () => {
   });
 
   it('should block cross-tenant task creation even when the attacker is a project member (S-01)', async () => {
-    const tenantA = await prisma.tenant.create({ data: { name: 'Tenant A', slug: 'tenant-a-2' } });
-    const tenantB = await prisma.tenant.create({ data: { name: 'Tenant B', slug: 'tenant-b-2' } });
+    const tenantA = await createTestTenant({ data: { name: 'Tenant A', slug: 'tenant-a-2' } });
+    const tenantB = await createTestTenant({ data: { name: 'Tenant B', slug: 'tenant-b-2' } });
     const { user: userA, accessToken: tokenA } = await setupUser(tenantA, 'attacker@a.com', 'ADMIN');
     const { user: userB, accessToken: tokenB } = await setupUser(tenantB, 'victim@b.com', 'ADMIN');
 
@@ -97,8 +108,8 @@ describe('Multi-Tenant Isolation (E2E)', () => {
   });
 
   it('should not leak cached tasks/projects across tenants (S-04)', async () => {
-    const tenantA = await prisma.tenant.create({ data: { name: 'Tenant A', slug: 'tenant-a-3' } });
-    const tenantB = await prisma.tenant.create({ data: { name: 'Tenant B', slug: 'tenant-b-3' } });
+    const tenantA = await createTestTenant({ data: { name: 'Tenant A', slug: 'tenant-a-3' } });
+    const tenantB = await createTestTenant({ data: { name: 'Tenant B', slug: 'tenant-b-3' } });
     const { user: userA, accessToken: tokenA } = await setupUser(tenantA, 'a@a.com', 'ADMIN');
     const { user: userB, accessToken: tokenB } = await setupUser(tenantB, 'b@b.com', 'ADMIN');
 
@@ -126,7 +137,7 @@ describe('Multi-Tenant Isolation (E2E)', () => {
   });
 
   it('should enforce RBAC on task creation for USER role (S-03)', async () => {
-    const tenant = await prisma.tenant.create({ data: { name: 'Tenant', slug: 'tenant-rbac' } });
+    const tenant = await createTestTenant({ data: { name: 'Tenant', slug: 'tenant-rbac' } });
     const { user: admin, accessToken: adminToken } = await setupUser(tenant, 'admin@rbac.com', 'ADMIN');
     const { user: member, accessToken: memberToken } = await setupUser(tenant, 'user@rbac.com', 'USER');
 
@@ -154,7 +165,7 @@ describe('Multi-Tenant Isolation (E2E)', () => {
   });
 
   it('should block INVITED members from accessing tenant data (S-10)', async () => {
-    const tenant = await prisma.tenant.create({ data: { name: 'Tenant', slug: 'tenant-invited' } });
+    const tenant = await createTestTenant({ data: { name: 'Tenant', slug: 'tenant-invited' } });
     const { user: admin } = await setupUser(tenant, 'admin@invited.com', 'ADMIN');
     const invited = await prisma.user.create({ data: { email: 'invitee@invited.com', password: 'hash' } });
     await prisma.tenantUser.create({
@@ -171,8 +182,8 @@ describe('Multi-Tenant Isolation (E2E)', () => {
   });
 
   it('should scope user deactivation to the acting tenant (S-02)', async () => {
-    const tenantA = await prisma.tenant.create({ data: { name: 'Tenant A', slug: 'tenant-a-4' } });
-    const tenantB = await prisma.tenant.create({ data: { name: 'Tenant B', slug: 'tenant-b-4' } });
+    const tenantA = await createTestTenant({ data: { name: 'Tenant A', slug: 'tenant-a-4' } });
+    const tenantB = await createTestTenant({ data: { name: 'Tenant B', slug: 'tenant-b-4' } });
     const { user: adminA, accessToken: tokenA } = await setupUser(tenantA, 'admina@a.com', 'ADMIN');
     const { user: adminB, accessToken: tokenB } = await setupUser(tenantB, 'adminb@b.com', 'ADMIN');
     const { user: victim } = await setupUser(tenantB, 'victim@b.com', 'USER');

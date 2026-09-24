@@ -16,8 +16,8 @@ describe('Task Management & Cache Consistency', () => {
 
   it('should invalidate project task list cache when a new task is created', async () => {
     // 1. Setup
-    const tenant = await prisma.tenant.create({ data: { name: 'Dev Corp', slug: 'dev' } });
     const user = await prisma.user.create({ data: { email: 'dev@dev.com', password: 'hash' } });
+    const tenant = await prisma.tenant.create({ data: { name: 'Dev Corp', slug: 'dev', ownerUserId: user.id } });
     await prisma.tenantUser.create({ data: { tenantId: tenant.id, userId: user.id, role: 'ADMIN' } });
     const project = await prisma.project.create({ data: { name: 'Main App', tenantId: tenant.id, createdById: user.id } });
     await prisma.projectMember.create({ data: { projectId: project.id, userId: user.id, role: 'OWNER' } });

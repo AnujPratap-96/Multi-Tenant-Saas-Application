@@ -10,8 +10,8 @@ import {
 const assertCanViewTask = async (userId, tenantId, taskId) => {
   const task = await taskRepo.findTaskById(taskId, tenantId);
   if (!task) throw new ApiError(404, "Task not found");
-  const ctx = { userId, tenantId };
-  if (!canViewTask(ctx, task)) {
+  const visible = await canViewTask(tenantId, userId, task, task.project || null);
+  if (!visible) {
     throw new ApiError(403, "You are not allowed to access this task");
   }
   return task;
@@ -21,12 +21,13 @@ const assertCanModifyEntry = async (userId, tenantId, entry) => {
   if (entry.userId === userId) return;
   if (await isOrgAdmin(tenantId, userId)) return;
   const task = entry.task;
-  const deptIds = (task?.departments || []).map((d) => d.departmentId);
-  const managed = await getUserManagedDepartmentIds(tenantId, userId);
-  const canManage = deptIds.some((id) => managed.includes(id));
-  if (!canManage) {
-    throw new ApiError(403, "You are not allowed to modify this time entry");
+  const deptIds = (task?.departments || []).map((d) => d.departmentId || d.id).filter(Boolean);
+  if (deptIds.length) {
+    const managed = await getUserManagedDepartmentIds(tenantId, userId);
+    const canManage = deptIds.some((id) => managed.includes(id));
+    if (canManage) return;
   }
+  throw new ApiError(403, "You are not allowed to modify this time entry");
 };
 
 export const createTimeEntry = async ({ userId, tenantId, taskId, validated }) => {
