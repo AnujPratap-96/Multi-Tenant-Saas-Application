@@ -13,6 +13,7 @@ import {
 } from "../redis/otp.redis.js";
 
 import { handleOtpResendLogic } from "../utils/otp-resend.handler.js";
+import logger from "../../../lib/logger.js";
 
 export const generateOtpService = async ({
   email,
@@ -20,18 +21,21 @@ export const generateOtpService = async ({
   purpose = OTP_PURPOSE.SIGNUP,
 }) => {
   if (!email) {
-
     throw new ApiError(400, "Email is required");
   }
 
   if (!requestId) {
     throw new ApiError(400, "RequestId is required");
   }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
   // Generic responses (D-10/S-13): never reveal whether the email has an account.
   // When the account-existence check fails, return early WITHOUT storing an OTP.
-  const existingUser = await findUserByEmail(email);
+  const existingUser = await findUserByEmail(normalizedEmail);
 
   if (purpose === OTP_PURPOSE.SIGNUP && existingUser) {
+    logger.info({ email: normalizedEmail, purpose }, "[AUTH] Signup requested for existing user — skipped OTP generation");
     return;
   }
 
@@ -39,6 +43,7 @@ export const generateOtpService = async ({
     (purpose === OTP_PURPOSE.LOGIN || purpose === OTP_PURPOSE.FORGOT_PASSWORD) &&
     !existingUser
   ) {
+    logger.warn({ email: normalizedEmail, purpose }, "[AUTH] User not found in DB for OTP request — skipped OTP generation");
     return;
   }
 
@@ -77,8 +82,8 @@ export const generateOtpService = async ({
   });
   const otpdata = await getOtp(requestId);
 
-  await saveRequestIdByEmailAndPurpose(email, purpose, requestId, ttl);
+  await saveRequestIdByEmailAndPurpose(normalizedEmail, purpose, requestId, ttl);
 
-  await sendOtpEmail(email, otp, purpose);
-
+  logger.info({ email: normalizedEmail, otp, purpose }, "🔑 [AUTH] Generated OTP successfully");
+  await sendOtpEmail(normalizedEmail, otp, purpose);
 };

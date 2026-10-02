@@ -22,7 +22,7 @@ export const verifySignupToken = asyncHandler(async (req, res, next) => {
 });
 
 export const verifyPasswordResetToken = asyncHandler(async (req, res, next) => {
-    const token = req.cookies?.passwordResetToken || req.headers.authorization?.split(" ")[1];
+    const token = req.cookies?.passwordResetToken || req.headers.authorization?.split(" ")[1] || req.body?.token;
     if (!token) {
         throw new ApiError(401, "Password reset token missing");
     }

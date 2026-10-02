@@ -8,8 +8,8 @@ const {
   doubleCsrfProtection,
 } = doubleCsrf({
   getSecret: () => env.CSRF_SECRET,
-  // v4 requires this — use userId if authenticated, fall back to IP
-  getSessionIdentifier: (req) => req.userId || req.ip || "anonymous",
+  // Stateless double-submit cookie: avoid binding to dynamic proxy/load-balancer IPs
+  getSessionIdentifier: () => "",
   cookieName: "x-csrf-token",
   cookieOptions: {
     httpOnly: true,

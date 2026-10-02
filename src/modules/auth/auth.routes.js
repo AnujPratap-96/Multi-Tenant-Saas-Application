@@ -182,6 +182,7 @@ router.post("/change-password", requireAccessToken, validate(changePasswordSchem
  *         description: Password reset
  */
 router.post("/forgot-password", verifyPasswordResetToken, validate(setPasswordSchema), passwordController);
+router.post("/reset-password", verifyPasswordResetToken, validate(setPasswordSchema), passwordController);
 
 /**
  * @swagger

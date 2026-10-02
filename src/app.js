@@ -51,7 +51,7 @@ app.use(
   })
 );
 
-if (env.TRUST_PROXY) {
+if (env.TRUST_PROXY || env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
