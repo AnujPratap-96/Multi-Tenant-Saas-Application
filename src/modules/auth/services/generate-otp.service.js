@@ -35,26 +35,28 @@ export const generateOtpService = async ({
   const existingUser = await findUserByEmail(normalizedEmail);
 
   if (purpose === OTP_PURPOSE.SIGNUP && existingUser) {
-    logger.info({ email: normalizedEmail, purpose }, "[AUTH] Signup requested for existing user — skipped OTP generation");
-    return;
+    logger.warn({ email: normalizedEmail, purpose }, "[AUTH] Signup rejected — user already exists");
+    throw new ApiError(400, "An account with this email address already exists");
   }
 
-  if (
-    (purpose === OTP_PURPOSE.LOGIN || purpose === OTP_PURPOSE.FORGOT_PASSWORD) &&
-    !existingUser
-  ) {
-    logger.warn({ email: normalizedEmail, purpose }, "[AUTH] User not found in DB for OTP request — skipped OTP generation");
-    return;
+  if (purpose === OTP_PURPOSE.LOGIN && !existingUser) {
+    logger.warn({ email: normalizedEmail, purpose }, "[AUTH] Login OTP rejected — user not found");
+    throw new ApiError(404, "No account found with this email address");
   }
 
-  const existingOtpReuestID = await getOtpByEmailAndPurpose(email, purpose);
+  if (purpose === OTP_PURPOSE.FORGOT_PASSWORD && !existingUser) {
+    logger.warn({ email: normalizedEmail, purpose }, "[AUTH] Forgot password rejected — user not found");
+    throw new ApiError(404, "No account found with this email address");
+  }
+
+  const existingOtpReuestID = await getOtpByEmailAndPurpose(normalizedEmail, purpose);
   const existingOTP = await getOtp(existingOtpReuestID);
 
   if (existingOTP) {
     return handleOtpResendLogic({
       otpData: existingOTP,
       requestId,
-      email,
+      email: normalizedEmail,
       existingRequestId: existingOtpReuestID,
     });
   }
