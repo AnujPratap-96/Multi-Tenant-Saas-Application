@@ -43,14 +43,13 @@ describe('Auth & Tenant Flow (E2E)', () => {
       .send({ email: 'ceo@enterprise.com', password: 'Password123!' });
 
     expect(loginRes.statusCode).toBe(200);
-    const token = loginRes.body.data.accessToken;
+    const authCookies = loginRes.headers['set-cookie'];
 
     // 3. Create Tenant
     const tenantRes = await request(app)
       .post('/api/v1/tenants')
-      .set('Authorization', `Bearer ${token}`)
       .set('x-csrf-token', csrf.token)
-      .set('Cookie', csrf.cookie)
+      .set('Cookie', [...(Array.isArray(csrf.cookie) ? csrf.cookie : [csrf.cookie]), ...authCookies])
       .send({ name: 'Enterprise Corp', plan: 'PRO' });
 
     expect(tenantRes.statusCode).toBe(201);

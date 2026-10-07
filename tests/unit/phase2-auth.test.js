@@ -41,39 +41,39 @@ describe('Phase 2 - OTP enumeration guard (D-10)', () => {
     vi.clearAllMocks();
   });
 
-  it('SIGNUP for an existing email returns silently (no OTP created)', async () => {
+  it('SIGNUP for an existing email rejects with 400', async () => {
     userRepository.findUserByEmail.mockResolvedValue({ id: 'u1', email: 'exists@example.com' });
 
-    const result = await generateOtpService({
-      email: 'exists@example.com',
-      requestId: 'req-1',
-      purpose: OTP_PURPOSE.SIGNUP,
-    });
-
-    expect(result).toBeUndefined();
+    await expect(
+      generateOtpService({
+        email: 'exists@example.com',
+        requestId: 'req-1',
+        purpose: OTP_PURPOSE.SIGNUP,
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
   });
 
-  it('LOGIN for an unknown email returns silently (no OTP created)', async () => {
+  it('LOGIN for an unknown email rejects with 404', async () => {
     userRepository.findUserByEmail.mockResolvedValue(null);
 
-    const result = await generateOtpService({
-      email: 'ghost@example.com',
-      requestId: 'req-2',
-      purpose: OTP_PURPOSE.LOGIN,
-    });
-
-    expect(result).toBeUndefined();
+    await expect(
+      generateOtpService({
+        email: 'ghost@example.com',
+        requestId: 'req-2',
+        purpose: OTP_PURPOSE.LOGIN,
+      })
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it('FORGOT_PASSWORD for an unknown email returns silently (no OTP created)', async () => {
+  it('FORGOT_PASSWORD for an unknown email rejects with 404', async () => {
     userRepository.findUserByEmail.mockResolvedValue(null);
 
-    const result = await generateOtpService({
-      email: 'ghost@example.com',
-      requestId: 'req-3',
-      purpose: OTP_PURPOSE.FORGOT_PASSWORD,
-    });
-
-    expect(result).toBeUndefined();
+    await expect(
+      generateOtpService({
+        email: 'ghost@example.com',
+        requestId: 'req-3',
+        purpose: OTP_PURPOSE.FORGOT_PASSWORD,
+      })
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

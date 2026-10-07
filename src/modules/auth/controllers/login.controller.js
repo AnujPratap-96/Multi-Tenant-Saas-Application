@@ -20,7 +20,7 @@ export const loginWithEmailAndPasswordController = asyncHandler(async (req, res)
   return successResponse(res, {
     success: true,
     message: "Login successful",
-    data: user
+    data: user,
   });
 });
 
@@ -36,7 +36,7 @@ export const loginWithOtpController = asyncHandler(async (req, res) => {
   return successResponse(res, {
     success: true,
     message: "Login successful",
-    data: user
+    data: user,
   });
 });
 
