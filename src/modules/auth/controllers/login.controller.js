@@ -46,9 +46,40 @@ export const loginWithGoogleController = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken, user } = await googleLoginService(req.user, ipAddress, userAgent);
 
   setAuthCookies(res, { accessToken, refreshToken });
-  
-  return res.redirect(`${env.FRONTEND_URL}/dashboard`);
 
+  const userJson = JSON.stringify(user);
+  const frontendUrl = env.FRONTEND_URL;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  return res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <title>Authenticating...</title>
+      </head>
+      <body>
+        <script>
+          (function() {
+            var sent = false;
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({ type: "OAUTH_SUCCESS", user: ${userJson} }, "*");
+                sent = true;
+                window.close();
+              }
+            } catch (err) {}
+            if (!sent) {
+              window.location.href = "${frontendUrl}/dashboard";
+            }
+          })();
+        </script>
+        <p style="font-family: sans-serif; text-align: center; margin-top: 40px;">
+          Authentication successful. Closing window...
+        </p>
+      </body>
+    </html>
+  `);
 });
 
 export const logoutController = asyncHandler(async (req, res) => {
