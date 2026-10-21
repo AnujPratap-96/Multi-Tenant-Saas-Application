@@ -1,9 +1,14 @@
 import { env } from "../config/env.js";
 
+const isSecureCrossSite =
+  env.NODE_ENV === "production" ||
+  (typeof env.FRONTEND_URL === "string" && env.FRONTEND_URL.startsWith("https://"));
+
 const getBaseOptions = () => ({
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
-  sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+  secure: isSecureCrossSite,
+  sameSite: isSecureCrossSite ? "none" : "lax",
+  partitioned: isSecureCrossSite,
 });
 
 /**

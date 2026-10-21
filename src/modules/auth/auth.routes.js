@@ -219,16 +219,22 @@ router.post("/refresh-token", refreshTokensController);
 // verified on the callback to prevent OAuth login CSRF.
 const oauthStateCookie = "oauth_state";
 
+const isSecureCrossSite =
+  env.NODE_ENV === "production" ||
+  (typeof env.FRONTEND_URL === "string" && env.FRONTEND_URL.startsWith("https://"));
+
 const googleAuthHandler = (req, res, next) => {
   const state = crypto.randomBytes(16).toString("hex");
   res.cookie(oauthStateCookie, state, {
     httpOnly: true,
-    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
-    secure: env.NODE_ENV === "production",
+    sameSite: isSecureCrossSite ? "none" : "lax",
+    secure: isSecureCrossSite,
+    partitioned: isSecureCrossSite,
     maxAge: 10 * 60 * 1000,
   });
   passport.authenticate("google", {
     scope: ["profile", "email"],
+    prompt: "select_account",
     state,
   })(req, res, next);
 };
@@ -237,7 +243,12 @@ const verifyGoogleState = (req, res, next) => {
   if (!req.query.state || req.query.state !== req.cookies?.[oauthStateCookie]) {
     return res.redirect(`${env.FRONTEND_URL}/login?error=oauth`);
   }
-  res.clearCookie(oauthStateCookie);
+  res.clearCookie(oauthStateCookie, {
+    httpOnly: true,
+    sameSite: isSecureCrossSite ? "none" : "lax",
+    secure: isSecureCrossSite,
+    partitioned: isSecureCrossSite,
+  });
   next();
 };
 
