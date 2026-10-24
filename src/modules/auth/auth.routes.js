@@ -7,7 +7,7 @@ import passport from 'passport';
 import { verifyOtpController } from "./controllers/otp.controller.js";
 import { emailVerifactionOtpController, loginOtpController, forgotPasswordOtpController } from "./controllers/request-otps.controller.js";
 import {passwordController, verifyForgotPasswordOtpController, changePasswordController} from "./controllers/password.controller.js";
-import {loginWithOtpController , loginWithGoogleController , loginWithEmailAndPasswordController , logoutController} from "./controllers/login.controller.js";
+import {loginWithOtpController , loginWithGoogleController , exchangeGoogleTicketController, loginWithEmailAndPasswordController , logoutController} from "./controllers/login.controller.js";
 import { refreshTokensController } from "./controllers/session.controller.js";
 import { otpSendRateLimiter, otpVerifyRateLimiter } from "../../middlewares/otpRateLimit.middleware.js";
 import crypto from "crypto";
@@ -285,6 +285,9 @@ router.get(
     failureRedirect: `${env.FRONTEND_URL}/login?error=oauth`,
   }),
   loginWithGoogleController
+);
+
+router.post("/google/exchange", exchangeGoogleTicketController
 );
 // logout route
 /**

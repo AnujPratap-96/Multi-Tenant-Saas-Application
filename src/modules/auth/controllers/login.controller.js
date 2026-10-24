@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { asyncHandler } from "../../../utils/async-handler.js";
 import { getRequestContext } from "../../../utils/requestContext.js";
 import { loginWithEmailPasswordService, loginWithOtpService } from "../services/login.service.js";
@@ -7,9 +8,10 @@ import { successResponse } from "../../../utils/response.js";
 import { googleLoginService } from "../services/google.service.js";
 import { clearAuthCookies } from "../../../utils/cookies.js";
 import { env } from "../../../config/env.js";
+import { redisClient } from "../../../config/redis.js";
+import { ApiError } from "../../../utils/api-error.js";
 
 export const loginWithEmailAndPasswordController = asyncHandler(async (req, res) => {
-
   const { email, password } = req.body;
   const { ipAddress, userAgent } = getRequestContext(req);
 
@@ -40,50 +42,53 @@ export const loginWithOtpController = asyncHandler(async (req, res) => {
   });
 });
 
-
 export const loginWithGoogleController = asyncHandler(async (req, res) => {
   const { ipAddress, userAgent } = getRequestContext(req);
-  const { accessToken, refreshToken, user } = await googleLoginService(req.user, ipAddress, userAgent);
+
+  const ticket = crypto.randomBytes(32).toString("hex");
+  await redisClient.set(
+    `oauth_ticket:${ticket}`,
+    JSON.stringify({
+      user: req.user,
+      ipAddress,
+      userAgent,
+    }),
+    { EX: 60 }
+  );
+
+  return res.redirect(`${env.FRONTEND_URL}/auth/callback?ticket=${ticket}`);
+});
+
+export const exchangeGoogleTicketController = asyncHandler(async (req, res) => {
+  const { ticket } = req.body;
+  if (!ticket || typeof ticket !== "string") {
+    throw new ApiError(400, "OAuth ticket is required");
+  }
+
+  const ticketKey = `oauth_ticket:${ticket}`;
+  const dataRaw = await redisClient.get(ticketKey);
+  if (!dataRaw) {
+    throw new ApiError(401, "Invalid or expired OAuth ticket");
+  }
+  await redisClient.del(ticketKey);
+
+  const { user: oauthUser, ipAddress, userAgent } = JSON.parse(dataRaw);
+  const { accessToken, refreshToken, user } = await googleLoginService(
+    oauthUser,
+    ipAddress || req.ip,
+    userAgent || req.headers["user-agent"] || ""
+  );
 
   setAuthCookies(res, { accessToken, refreshToken });
 
-  const userJson = JSON.stringify(user);
-  const frontendUrl = env.FRONTEND_URL;
-
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  return res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <title>Authenticating...</title>
-      </head>
-      <body>
-        <script>
-          (function() {
-            var sent = false;
-            try {
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({ type: "OAUTH_SUCCESS", user: ${userJson} }, "*");
-                sent = true;
-                window.close();
-              }
-            } catch (err) {}
-            if (!sent) {
-              window.location.href = "${frontendUrl}/dashboard";
-            }
-          })();
-        </script>
-        <p style="font-family: sans-serif; text-align: center; margin-top: 40px;">
-          Authentication successful. Closing window...
-        </p>
-      </body>
-    </html>
-  `);
+  return successResponse(res, {
+    success: true,
+    message: "Google login successful",
+    data: user,
+  });
 });
 
 export const logoutController = asyncHandler(async (req, res) => {
-
   const userId = req.userId;
   const refreshToken = req.cookies?.refreshToken;
   const { ipAddress, userAgent } = getRequestContext(req);
