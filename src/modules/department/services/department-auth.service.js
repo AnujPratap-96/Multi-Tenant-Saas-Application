@@ -35,6 +35,20 @@ export const getUserManagedDepartmentIds = async (tenantId, userId) => {
   return [...new Set([...owned.map((d) => d.id), ...leadRows.map((r) => r.departmentId)])];
 };
 
+export const isDepartmentManager = async (tenantId, userId, departmentId) => {
+  if (!tenantId || !userId || !departmentId) return false;
+  const dept = await prisma.department.findFirst({
+    where: { id: departmentId, tenantId, deletedAt: null },
+    select: { managerId: true },
+  });
+  if (dept && dept.managerId === userId) return true;
+  const leadMember = await prisma.departmentMember.findFirst({
+    where: { departmentId, userId, role: "MANAGER", removedAt: null },
+    select: { userId: true },
+  });
+  return !!leadMember;
+};
+
 export const userManagesAnyOf = async (tenantId, userId, departmentIds = []) => {
   if (!departmentIds.length) return false;
   const managed = await getUserManagedDepartmentIds(tenantId, userId);

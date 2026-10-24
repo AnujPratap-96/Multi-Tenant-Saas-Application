@@ -20,12 +20,22 @@ export const getCsrf = async () => {
  * Clean up database and redis between tests
  */
 export const cleanup = async () => {
+  const preservedTables = new Set([
+    '_prisma_migrations',
+    'Permission',
+    'RoleDefinition',
+    'RolePermission',
+    'permission',
+    'role_definition',
+    'role_permission',
+  ]);
+
   const tablenames = await prisma.$queryRaw`
     SELECT tablename FROM pg_tables WHERE schemaname='public'
   `;
 
   for (const { tablename } of tablenames) {
-    if (tablename !== '_prisma_migrations') {
+    if (!preservedTables.has(tablename)) {
       try {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE "public"."${tablename}" CASCADE;`);
       } catch (error) {

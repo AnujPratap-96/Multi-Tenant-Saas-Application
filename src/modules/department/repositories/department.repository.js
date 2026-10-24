@@ -110,7 +110,7 @@ export const listDepartmentMembers = async (departmentId, { page = 1, limit = 20
       take: limit,
       orderBy: { addedAt: "asc" },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, homeDepartment: { select: { id: true, name: true } } } },
+        user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } },
       },
     }),
     prisma.departmentMember.count({ where }),

@@ -9,41 +9,66 @@ const buildTenantKey = (tenantId) => `${TENANT_CACHE_PREFIX}${tenantId}`;
 const buildMembershipKey = (tenantId, userId) => `${TENANT_MEMBERSHIP_PREFIX}${tenantId}:${userId}`;
 
 export const getCachedTenant = async (tenantId) => {
-  const key = buildTenantKey(tenantId);
-  const data = await redisClient.get(key);
-  return data ? JSON.parse(data) : null;
+  try {
+    if (!redisClient.isReady && !redisClient.isOpen) return null;
+    const key = buildTenantKey(tenantId);
+    const data = await redisClient.get(key);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
 };
 
 export const setCachedTenant = async (tenantId, tenantData) => {
-  const key = buildTenantKey(tenantId);
-  await redisClient.set(key, JSON.stringify(tenantData), { EX: TENANT_TTL });
+  try {
+    if (!redisClient.isReady && !redisClient.isOpen) return;
+    const key = buildTenantKey(tenantId);
+    await redisClient.set(key, JSON.stringify(tenantData), { EX: TENANT_TTL });
+  } catch {}
 };
 
 export const getCachedMembership = async (tenantId, userId) => {
-  const key = buildMembershipKey(tenantId, userId);
-  const data = await redisClient.get(key);
-  return data ? JSON.parse(data) : null;
+  try {
+    if (!redisClient.isReady && !redisClient.isOpen) return null;
+    const key = buildMembershipKey(tenantId, userId);
+    const data = await redisClient.get(key);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
 };
 
 export const setCachedMembership = async (tenantId, userId, membershipData) => {
-  const key = buildMembershipKey(tenantId, userId);
-  await redisClient.set(key, JSON.stringify(membershipData), { EX: MEMBERSHIP_TTL });
+  try {
+    if (!redisClient.isReady && !redisClient.isOpen) return;
+    const key = buildMembershipKey(tenantId, userId);
+    await redisClient.set(key, JSON.stringify(membershipData), { EX: MEMBERSHIP_TTL });
+  } catch {}
 };
 
 export const invalidateTenantCache = async (tenantId) => {
-  const key = buildTenantKey(tenantId);
-  await redisClient.del(key);
+  try {
+    if (!redisClient.isReady && !redisClient.isOpen) return;
+    const key = buildTenantKey(tenantId);
+    await redisClient.del(key);
+  } catch {}
 };
 
 export const invalidateMembershipCache = async (tenantId, userId) => {
-  const key = buildMembershipKey(tenantId, userId);
-  await redisClient.del(key);
+  try {
+    if (!redisClient.isReady && !redisClient.isOpen) return;
+    const key = buildMembershipKey(tenantId, userId);
+    await redisClient.del(key);
+  } catch {}
 };
 
 export const invalidateAllTenantMemberships = async (tenantId) => {
-  const pattern = `${TENANT_MEMBERSHIP_PREFIX}${tenantId}:*`;
-  const keys = await redisClient.keys(pattern);
-  if (keys.length > 0) {
-    await redisClient.del(keys);
-  }
+  try {
+    if (!redisClient.isReady && !redisClient.isOpen) return;
+    const pattern = `${TENANT_MEMBERSHIP_PREFIX}${tenantId}:*`;
+    const keys = await redisClient.keys(pattern);
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+    }
+  } catch {}
 };
