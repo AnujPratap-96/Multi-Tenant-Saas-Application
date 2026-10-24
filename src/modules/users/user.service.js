@@ -25,8 +25,14 @@ export const updateProfile = async (userId, tenantId, updateData) => {
     throw new ApiError(404, "User not found");
   }
 
-  // Split tenant-scoped job title from global user fields
-  const { jobTitle, ...userFields } = updateData;
+  // Split tenant-scoped job title from global user fields (and ignore tenantId)
+  const { jobTitle, tenantId: _tenantId, ...rawUserFields } = updateData;
+  const userFields = {};
+  for (const [key, value] of Object.entries(rawUserFields)) {
+    if (value !== undefined) {
+      userFields[key] = value;
+    }
+  }
   const hasUserFields = Object.keys(userFields).length > 0;
 
   if (hasUserFields) {

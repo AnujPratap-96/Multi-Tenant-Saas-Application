@@ -1,16 +1,19 @@
 import { z } from "zod";
 import { requestSchema } from "../../schemas/request.schema.js";
 
+const emptyToNull = (val) => (typeof val === "string" && val.trim() === "" ? null : val);
+
 export const updateProfileSchema = requestSchema({
   body: z.object({
-    firstName: z.string().trim().min(1).max(50).optional(),
-    lastName: z.string().trim().min(1).max(50).optional(),
-    displayName: z.string().trim().min(1).max(100).optional(),
-    bio: z.string().max(1000).optional(),
-    timezone: z.string().max(64).optional(),
-    locale: z.string().max(16).optional(),
-    avatarUrl: z.string().url().optional().or(z.literal("")),
-    jobTitle: z.string().trim().max(100).optional(),
+    firstName: z.preprocess(emptyToNull, z.string().trim().max(50).nullable().optional()),
+    lastName: z.preprocess(emptyToNull, z.string().trim().max(50).nullable().optional()),
+    displayName: z.preprocess(emptyToNull, z.string().trim().max(100).nullable().optional()),
+    bio: z.preprocess(emptyToNull, z.string().max(1000).nullable().optional()),
+    timezone: z.preprocess(emptyToNull, z.string().max(64).nullable().optional()),
+    locale: z.preprocess(emptyToNull, z.string().max(16).nullable().optional()),
+    avatarUrl: z.preprocess(emptyToNull, z.string().max(2000000).nullable().optional()),
+    jobTitle: z.preprocess(emptyToNull, z.string().trim().max(100).nullable().optional()),
+    tenantId: z.string().uuid().optional().nullable().or(z.literal("")),
   }),
 });
 
@@ -35,9 +38,9 @@ export const updateUserSchema = requestSchema({
     id: z.string().uuid("Invalid user ID"),
   }),
   body: z.object({
-    firstName: z.string().trim().min(1).max(50).optional(),
-    lastName: z.string().trim().min(1).max(50).optional(),
-    avatarUrl: z.string().url().optional().or(z.literal("")),
+    firstName: z.preprocess(emptyToNull, z.string().trim().max(50).nullable().optional()),
+    lastName: z.preprocess(emptyToNull, z.string().trim().max(50).nullable().optional()),
+    avatarUrl: z.preprocess(emptyToNull, z.string().max(2000000).nullable().optional()),
     emailVerified: z.boolean().optional(),
     isActive: z.boolean().optional(),
     role: z.preprocess((val) => typeof val === "string" ? val.toUpperCase() : val, z.enum(["ADMIN", "MANAGER", "USER"])).optional(),
