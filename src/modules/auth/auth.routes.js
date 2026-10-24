@@ -225,7 +225,8 @@ const isSecureCrossSite =
 
 const googleAuthHandler = (req, res, next) => {
   const state = crypto.randomBytes(16).toString("hex");
-  res.cookie(oauthStateCookie, state, {
+  const redirect = typeof req.query.redirect === "string" ? req.query.redirect : "/dashboard";
+  res.cookie(oauthStateCookie, JSON.stringify({ state, redirect }), {
     httpOnly: true,
     sameSite: isSecureCrossSite ? "none" : "lax",
     secure: isSecureCrossSite,
@@ -240,7 +241,22 @@ const googleAuthHandler = (req, res, next) => {
 };
 
 const verifyGoogleState = (req, res, next) => {
-  if (!req.query.state || req.query.state !== req.cookies?.[oauthStateCookie]) {
+  let cookieState = null;
+  let redirectTarget = "/dashboard";
+  try {
+    const raw = req.cookies?.[oauthStateCookie];
+    if (raw && raw.startsWith("{")) {
+      const parsed = JSON.parse(raw);
+      cookieState = parsed.state;
+      redirectTarget = parsed.redirect || "/dashboard";
+    } else {
+      cookieState = raw;
+    }
+  } catch {
+    cookieState = req.cookies?.[oauthStateCookie];
+  }
+
+  if (!req.query.state || req.query.state !== cookieState) {
     return res.redirect(`${env.FRONTEND_URL}/login?error=oauth`);
   }
   res.clearCookie(oauthStateCookie, {
@@ -249,6 +265,7 @@ const verifyGoogleState = (req, res, next) => {
     secure: isSecureCrossSite,
     partitioned: isSecureCrossSite,
   });
+  req.oauthRedirect = redirectTarget;
   next();
 };
 

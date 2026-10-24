@@ -44,6 +44,7 @@ export const loginWithOtpController = asyncHandler(async (req, res) => {
 
 export const loginWithGoogleController = asyncHandler(async (req, res) => {
   const { ipAddress, userAgent } = getRequestContext(req);
+  const redirectTarget = req.oauthRedirect || "/dashboard";
 
   const ticket = crypto.randomBytes(32).toString("hex");
   await redisClient.set(
@@ -52,11 +53,14 @@ export const loginWithGoogleController = asyncHandler(async (req, res) => {
       user: req.user,
       ipAddress,
       userAgent,
+      redirect: redirectTarget,
     }),
     { EX: 300 }
   );
 
-  return res.redirect(`${env.FRONTEND_URL}/auth/callback?ticket=${ticket}`);
+  return res.redirect(
+    `${env.FRONTEND_URL}/auth/callback?ticket=${ticket}&redirect=${encodeURIComponent(redirectTarget)}`
+  );
 });
 
 export const exchangeGoogleTicketController = asyncHandler(async (req, res) => {

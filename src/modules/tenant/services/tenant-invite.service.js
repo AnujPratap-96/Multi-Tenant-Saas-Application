@@ -342,7 +342,11 @@ export const acceptInvite = async (token, userId, req) => {
       where: { tenantId_userId: { tenantId, userId } },
     });
     if (member && (member.status === 'ACTIVE' || member.status === 'SUSPENDED')) {
-      throw new ApiError(400, "User is already a member of this tenant");
+      await tx.tenantInvite.update({
+        where: { id: inviteId },
+        data: { status: 'ACCEPTED', acceptedAt: new Date() },
+      });
+      return member;
     }
     member = await tx.tenantUser.upsert({
       where: { tenantId_userId: { tenantId, userId } },

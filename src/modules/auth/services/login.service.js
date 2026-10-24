@@ -8,6 +8,7 @@ import { createAuthSession } from "../repositories/auth.repository.js";
 import { createAuditLog } from "../../audit-log/audit-log.repository.js";
 import { verifyOtpService } from "./verify-otp.service.js";
 import { mapUserToResponse } from "../../users/utils/map-user-fields.js";
+import { claimPendingInvites } from "../../tenant/services/tenant-invite.service.js";
 
 export const loginWithEmailPasswordService = async (email, password, ipAddress, userAgent) => {
 
@@ -53,6 +54,7 @@ export const loginWithEmailPasswordService = async (email, password, ipAddress, 
         ipAddress,
         userAgent,
     });
+    await claimPendingInvites(user.email, user.id, { ip: ipAddress, headers: { "user-agent": userAgent } }).catch(() => {});
     const mappedUser = mapUserToResponse(user);
     return { accessToken, refreshToken , user: mappedUser };
 };
@@ -101,6 +103,7 @@ export const loginWithOtpService = async (otp, ipAddress, userAgent, requestId, 
     ipAddress,
     userAgent,
   });
+  await claimPendingInvites(user.email, user.id, { ip: ipAddress, headers: { "user-agent": userAgent } }).catch(() => {});
   const mappedUser = mapUserToResponse(user);
 
   return { accessToken, refreshToken , user: mappedUser };

@@ -1,6 +1,7 @@
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { env } from "../../../config/env.js";
 import { findUserByEmail, createUser, updateUser } from "../../users/user.repository.js";
+import { claimPendingInvites } from "../../tenant/services/tenant-invite.service.js";
 
 export const googleStrategy = new GoogleStrategy(
   {
@@ -28,6 +29,8 @@ export const googleStrategy = new GoogleStrategy(
         // Google is a verified identity provider
         user = await updateUser(user.id, { emailVerified: true });
       }
+
+      await claimPendingInvites(email, user.id).catch(() => {});
 
       return done(null, user);
     } catch (err) {

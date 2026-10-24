@@ -6,10 +6,19 @@ import { updateLastLogin } from "../../users/user.repository.js";
 import { ApiError } from "../../../utils/api-error.js";
 import { createAuthSession } from "../repositories/auth.repository.js";
 import { mapUserToResponse } from "../../users/utils/map-user-fields.js";
+import { claimPendingInvites } from "../../tenant/services/tenant-invite.service.js";
+
 export const googleLoginService = async (user, ipAddress, userAgent) => {
   if (!user || !user.isActive) {
     throw new ApiError(401, "Invalid credentials");
   }
+
+  // Auto-claim any pending tenant invitations for this verified Google email
+  await claimPendingInvites(user.email, user.id, {
+    ip: ipAddress,
+    headers: { "user-agent": userAgent },
+  }).catch(() => {});
+
   const { accessToken, refreshToken } = await generateAuthToken({
     userId: user.id,
     email: user.email,

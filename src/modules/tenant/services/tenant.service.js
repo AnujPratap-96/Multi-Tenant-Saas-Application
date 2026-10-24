@@ -7,6 +7,7 @@ import * as tenantHelper from "../utils/tenant-helper.js";
 import * as membershipRepository from "../repositories/tenant-membership.repository.js";
 import { DEFAULT_TENANT_PLAN, TENANT_AUDIT_ACTIONS, TENANT_USER_STATUS } from "../constants/tenant.constants.js";
 import * as tenantRedis from "../redis/tenant.redis.js";
+import { claimPendingInvites } from "./tenant-invite.service.js";
 
 /**
  * Create a new tenant
@@ -219,6 +220,10 @@ export const restoreTenant = async (tenantId, userId, req) => {
  * @returns {Promise<Object>} List of tenants
  */
 export const listTenants = async (userId, options = {}) => {
+  const user = await User.findUserById(userId);
+  if (user?.email) {
+    await claimPendingInvites(user.email, userId).catch(() => {});
+  }
   return await tenantRepository.listTenantsForUser(userId, options);
 };
 
@@ -277,5 +282,9 @@ export const switchTenant = async (tenantId, userId, req) => {
  * @returns {Promise<Array>} List of tenant memberships
  */
 export const getUserTenants = async (userId) => {
+  const user = await User.findUserById(userId);
+  if (user?.email) {
+    await claimPendingInvites(user.email, userId).catch(() => {});
+  }
   return await tenantRepository.getUserTenants(userId);
 };

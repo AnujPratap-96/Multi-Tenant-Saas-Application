@@ -192,7 +192,7 @@ export const findInviteByTokenHash = async (tokenHash) => {
 export const findPendingInvitesByEmail = async (email) => {
   return prisma.tenantInvite.findMany({
     where: {
-      email,
+      email: { equals: email, mode: "insensitive" },
       status: "PENDING",
       expiresAt: { gt: new Date() },
     },
