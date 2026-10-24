@@ -53,7 +53,7 @@ export const loginWithGoogleController = asyncHandler(async (req, res) => {
       ipAddress,
       userAgent,
     }),
-    { EX: 60 }
+    { EX: 300 }
   );
 
   return res.redirect(`${env.FRONTEND_URL}/auth/callback?ticket=${ticket}`);

@@ -5,7 +5,7 @@ const {
   invalidCsrfTokenError,
   generateCsrfToken,
   validateRequest,
-  doubleCsrfProtection,
+  doubleCsrfProtection: rawDoubleCsrfProtection,
 } = doubleCsrf({
   getSecret: () => env.CSRF_SECRET,
   // Stateless double-submit cookie: avoid binding to dynamic proxy/load-balancer IPs
@@ -22,6 +22,21 @@ const {
   // v4 renamed getTokenFromRequest → getCsrfTokenFromRequest
   getCsrfTokenFromRequest: (req) => req.headers["x-csrf-token"],
 });
+
+// Exempt OAuth ticket exchange and public handoffs from CSRF
+const CSRF_EXEMPT_ROUTES = [
+  "/auth/google/exchange",
+  "/api/v1/auth/google/exchange",
+];
+
+const doubleCsrfProtection = (req, res, next) => {
+  const path = req.path || "";
+  const originalUrl = req.originalUrl || "";
+  if (CSRF_EXEMPT_ROUTES.some((route) => path.includes(route) || originalUrl.includes(route))) {
+    return next();
+  }
+  return rawDoubleCsrfProtection(req, res, next);
+};
 
 export { doubleCsrfProtection, generateCsrfToken, invalidCsrfTokenError };
 
