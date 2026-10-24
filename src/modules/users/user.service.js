@@ -33,6 +33,9 @@ export const updateProfile = async (userId, tenantId, updateData) => {
       userFields[key] = value;
     }
   }
+  if (jobTitle !== undefined) {
+    userFields.jobTitle = jobTitle;
+  }
   const hasUserFields = Object.keys(userFields).length > 0;
 
   if (hasUserFields) {
@@ -40,7 +43,11 @@ export const updateProfile = async (userId, tenantId, updateData) => {
   }
 
   if (jobTitle !== undefined && tenantId) {
-    await userRepository.updateMembership(tenantId, userId, { jobTitle });
+    try {
+      await userRepository.updateMembership(tenantId, userId, { jobTitle });
+    } catch {
+      // ignore if user has no membership in acting tenant
+    }
   }
 
   const updatedUser = await userRepository.findActiveUserById(userId);

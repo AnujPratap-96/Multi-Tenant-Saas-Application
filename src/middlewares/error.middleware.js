@@ -14,6 +14,10 @@ export default function errorMiddleware(err, req, res, next) {
     error = new ApiError(400, "Validation failed", mappedError);
   } else if (err === invalidCsrfTokenError || err.code === "EBADCSRFTOKEN") {
     error = new ApiError(403, "Invalid or missing CSRF token");
+  } else if (err.type === "entity.too.large" || err.status === 413) {
+    error = new ApiError(413, "Request payload too large (max 10MB)");
+  } else if (err.code === "P2025") {
+    error = new ApiError(404, "Record not found");
   } else if (!(err instanceof ApiError)) {
     error = new ApiError(500, "Internal Server Error");
   }

@@ -48,6 +48,7 @@ app.use(
   cors({
     origin: env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()),
     credentials: true,
+    maxAge: 86400,
   })
 );
 
@@ -65,8 +66,8 @@ const authRateLimiter = rateLimit({
 });
 
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 
 app.use(
