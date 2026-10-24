@@ -7,7 +7,10 @@ import { TENANT_ROLES, INVITE_EXPIRY_DAYS } from "../constants/tenant.constants.
 export const createInviteSchema = requestSchema({
   body: z.object({
     email: z.string().trim().toLowerCase().email(),
-    role: z.enum([TENANT_ROLES.ADMIN, TENANT_ROLES.MANAGER, TENANT_ROLES.USER]),
+    role: z.preprocess(
+      (val) => (typeof val === "string" ? val.toUpperCase() : val),
+      z.enum([TENANT_ROLES.ADMIN, TENANT_ROLES.MANAGER, TENANT_ROLES.USER])
+    ),
   }),
 });
 

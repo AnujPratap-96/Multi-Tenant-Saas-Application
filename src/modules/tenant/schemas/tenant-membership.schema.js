@@ -7,14 +7,20 @@ import { TENANT_ROLES } from "../constants/tenant.constants.js";
 export const addMemberSchema = requestSchema({
   body: z.object({
     userId: z.string().uuid("Invalid user ID"),
-    role: z.enum([TENANT_ROLES.ADMIN, TENANT_ROLES.MANAGER, TENANT_ROLES.USER]),
+    role: z.preprocess(
+      (val) => (typeof val === "string" ? val.toUpperCase() : val),
+      z.enum([TENANT_ROLES.ADMIN, TENANT_ROLES.MANAGER, TENANT_ROLES.USER])
+    ),
   }),
 });
 
 // Update member role schema
 export const updateMemberSchema = requestSchema({
   body: z.object({
-    role: z.enum([TENANT_ROLES.ADMIN, TENANT_ROLES.MANAGER, TENANT_ROLES.USER]),
+    role: z.preprocess(
+      (val) => (typeof val === "string" ? val.toUpperCase() : val),
+      z.enum([TENANT_ROLES.ADMIN, TENANT_ROLES.MANAGER, TENANT_ROLES.USER])
+    ),
   }),
 });
 
