@@ -2,10 +2,10 @@ import * as auditLogRepository from "../audit-log.repository.js";
 import * as membershipRepository from "../../tenant/repositories/tenant-membership.repository.js";
 import { ApiError } from "../../../utils/api-error.js";
 
-async function requireAdmin(tenantId, userId) {
-  const isAdmin = await membershipRepository.isTenantAdmin(tenantId, userId);
-  if (!isAdmin) {
-    throw new ApiError(403, "Admin access required to view audit logs");
+async function requireAuditAccess(tenantId, userId) {
+  const canAccess = await membershipRepository.canManageMembers(tenantId, userId);
+  if (!canAccess) {
+    throw new ApiError(403, "Admin or manager access required to view audit logs");
   }
 }
 
@@ -17,12 +17,12 @@ const escapeCsv = (value) => {
 };
 
 export const listTenantAuditLogs = async (tenantId, userId, options) => {
-  await requireAdmin(tenantId, userId);
+  await requireAuditAccess(tenantId, userId);
   return await auditLogRepository.listAuditLogsByTenant(tenantId, options);
 };
 
 export const exportAuditLogs = async (tenantId, userId, filters) => {
-  await requireAdmin(tenantId, userId);
+  await requireAuditAccess(tenantId, userId);
   const logs = await auditLogRepository.listAuditLogsForExport(tenantId, filters);
 
   const header = [
